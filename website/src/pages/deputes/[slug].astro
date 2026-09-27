@@ -1,7 +1,9 @@
 ---
 import Base from '../../layouts/Base.astro';
 import HemicycleStatic from '../../components/HemicycleStatic.astro';
-import { load, readOptional, fmtDate, fmtEur, fmtPct, fmtInt, type DeputeDetail } from '../../lib/data';
+import { load, readOptional, fmtDate, fmtEur, fmtPct, fmtInt, type DeputeDetail, type Depute } from '../../lib/data';
+import { strip } from '../../lib/charts';
+import { median } from '../../lib/stats';
 
 export function getStaticPaths() {
   return load().deputes.map((d) => ({ params: { slug: d.slug } }));
@@ -16,6 +18,32 @@ const fills = deputes.map((x) => (x.groupe === d.groupe ? `color-mix(in srgb, ${
 fills[idx] = g?.couleur ?? 'var(--ink)';
 
 const nom = `${d.prenom} ${d.nom}`;
+
+// Profil : où se situe ce député parmi les 577, indicateur par indicateur.
+const col = g?.couleur ?? 'var(--ink)';
+const commRate = (x: Depute) => (x.commissions?.convocations ? x.commissions.presents / x.commissions.convocations : null);
+const metrics: { label: string; get: (x: Depute) => number | null; fmt: (v: number) => string; ax: { min: number; max: number; log?: boolean }; more: string; less: string }[] = [
+  { label: 'Présence aux scrutins', get: (x) => x.participation, fmt: fmtPct, ax: { min: 0, max: 0.8 }, more: 'vote plus souvent que', less: 'vote moins souvent que' },
+  { label: 'Votes solennels', get: (x) => x.participationSolennels, fmt: fmtPct, ax: { min: 0.2, max: 1 }, more: 'participe plus aux grands votes que', less: 'participe moins aux grands votes que' },
+  { label: 'Loyauté envers son groupe', get: (x) => x.loyaute, fmt: fmtPct, ax: { min: 0.6, max: 1 }, more: 'suit davantage son groupe que', less: "s'écarte davantage de son groupe que" },
+  { label: 'Amendements déposés', get: (x) => x.amendements + 1, fmt: (v) => fmtInt(v - 1), ax: { min: 1, max: 3000, log: true }, more: "dépose plus d'amendements que", less: "dépose moins d'amendements que" },
+  { label: 'Questions écrites', get: (x) => x.questions + 1, fmt: (v) => fmtInt(v - 1), ax: { min: 1, max: 120, log: true }, more: 'pose plus de questions que', less: 'pose moins de questions que' },
+  { label: 'Présence en commission', get: commRate, fmt: fmtPct, ax: { min: 0, max: 1 }, more: 'est plus présent en commission que', less: 'est moins présent en commission que' },
+  { label: 'Âge', get: (x) => x.age, fmt: (v) => `${v} ans`, ax: { min: 25, max: 85 }, more: 'est plus âgé que', less: 'est plus jeune que' },
+];
+const profile = metrics
+  .map((m) => {
+    const me = m.get(d);
+    if (me == null) return null;
+    const all = deputes.map(m.get).filter((v): v is number => v != null);
+    const below = all.filter((v) => v < me).length / all.length;
+    const gmed = median(deputes.filter((x) => x.groupe === d.groupe).map(m.get).filter((v): v is number => v != null));
+    const phrase = below >= 0.5 ? `${m.more} ${Math.round(below * 100)} % des députés` : `${m.less} ${Math.round((1 - below - all.filter((v) => v === me).length / all.length) * 100)} % des députés`;
+    // Accord au féminin pour les députées.
+    const accord = d.femme ? phrase.replace(/\bprésent\b/g, 'présente').replace(/\bâgé\b/g, 'âgée') : phrase;
+    return { label: m.label, value: m.fmt(me), phrase: accord, svg: strip(all, me, m.ax, col, gmed ?? undefined) };
+  })
+  .filter((p): p is NonNullable<typeof p> => p != null);
 const VOTE_LBL: Record<string, string> = { pour: 'Pour', contre: 'Contre', abstention: 'Abstention', absent: 'Absent' };
 const lastAmount = (m: { annee: number; montant: number }[]) => [...m].sort((a, b) => b.annee - a.annee)[0];
 const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d.groupe}${d.circonscription ? ', ' + d.circonscription : ''}. Présence aux votes, discipline de groupe, intérêts déclarés, parcours.`;
@@ -46,6 +74,20 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
       <div><b class="num">{fmtInt(d.joursVote ?? 0)}</b><span>jours où il a voté en séance</span></div>
     </section>
     {d.fonction && <p class="muted">{d.fonction}{d.fonction.startsWith('Présidente') || d.fonction.startsWith('Président') ? " : préside les séances et ne prend pas part aux votes, d'où l'absence de taux de présence." : '.'}</p>}
+
+    <section class="stack" style="--gap:14px">
+      <h2>Son profil parmi les {deputes.length} députés</h2>
+      <p class="muted small">Chaque point gris est un député. Le grand point, c'est {nom} ; le trait, la médiane de son groupe ({d.groupe}).</p>
+      <div class="profile">
+        {profile.map((p) => (
+          <div class="pr">
+            <p><b>{p.label}</b> <span class="num">{p.value}</span></p>
+            <Fragment set:html={p.svg} />
+            <p class="small muted">{d.femme ? 'Elle' : 'Il'} {p.phrase}.</p>
+          </div>
+        ))}
+      </div>
+    </section>
 
     <section class="stack" style="--gap:12px">
       <h2>Sa place dans l'hémicycle</h2>
@@ -192,6 +234,12 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
   .kpis span { font-size: 0.85rem; color: var(--ink-62); }
   details summary { cursor: pointer; font-weight: 600; margin-block: 8px; }
   .more-votes { margin-top: 12px; }
+  .profile { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 18px 28px; }
+  .pr { display: grid; gap: 2px; }
+  .pr p { display: flex; justify-content: space-between; gap: 12px; }
+  .pr :global(svg) { width: 100%; height: auto; display: block; }
+  .pr :global(.sd) { fill: var(--ink-16); }
+  .pr :global(.gm) { stroke: var(--ink); stroke-width: 2; }
   .votes { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
   .votes li { display: grid; grid-template-columns: 96px 1fr; gap: 2px 12px; align-items: baseline; }
   .votes li > .small { grid-column: 2; }
