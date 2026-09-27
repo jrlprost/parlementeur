@@ -8,7 +8,7 @@ import shutil
 import duckdb
 import httpx
 
-from . import agenda, an, elections, hatvp, lobbying, wikidata
+from . import agenda, an, comptes_rendus, elections, hatvp, lobbying, wikidata
 import time
 from contextlib import contextmanager
 
@@ -125,7 +125,8 @@ def main() -> None:
     with step("Scrutins et votes nominatifs (Assemblée nationale)"):
         scrutins = an.load_scrutins()
     with step("Agenda : séances et réunions de commission (Assemblée nationale)"):
-        events, presence, monthly = agenda.load(an.load_organe_names(), scrutins, ids)
+        reels = comptes_rendus.load()
+        events, presence, monthly = agenda.load(an.load_organe_names(), scrutins, ids, reels)
     with step("Présence et discipline de vote (DuckDB)"):
         metrics = vote_metrics(deputes, scrutins)
     with step("Amendements (Assemblée nationale)"):
@@ -334,6 +335,7 @@ def main() -> None:
                 "scrutins": {"label": "Assemblée nationale, scrutins publics", "url": an.SCRUTINS, "records": len(scrutins), **fetch_info(f"an{an.LEGISLATURE}_scrutins.json.zip")},
                 "amendements": {"label": "Assemblée nationale, amendements", "url": an.AMENDEMENTS, "records": n_amdts, **fetch_info(f"an{an.LEGISLATURE}_amendements.json.zip")},
                 "questions": {"label": "Assemblée nationale, questions écrites", "url": an.QUESTIONS, "records": n_questions, **fetch_info(f"an{an.LEGISLATURE}_questions.json.zip")},
+                "comptesRendus": {"label": "Assemblée nationale, comptes rendus des séances publiques", "url": comptes_rendus.SYCERON, "records": len(reels), **fetch_info("an17_syceron.xml.zip")},
                 "agenda": {"label": "Assemblée nationale, agenda des séances et réunions", "url": agenda.AGENDA, "records": len(events), **fetch_info("an17_agenda.json.zip")},
                 "hatvp": {"label": "HATVP, déclarations d'intérêts et d'activités", "url": hatvp.DECLARATIONS, "records": len(decl), **fetch_info("hatvp_declarations.xml")},
                 "agora": {"label": "HATVP, répertoire des représentants d'intérêts", "url": lobbying.AGORA, "records": lobby["organisations"], **fetch_info("hatvp_agora.json")},
