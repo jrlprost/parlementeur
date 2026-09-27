@@ -8,7 +8,7 @@ import shutil
 import duckdb
 import httpx
 
-from . import an, hatvp, wikidata
+from . import an, hatvp, lobbying, wikidata
 import time
 from contextlib import contextmanager
 
@@ -125,10 +125,16 @@ def main() -> None:
         scrutins = an.load_scrutins()
     with step("Présence et discipline de vote (DuckDB)"):
         metrics = vote_metrics(deputes, scrutins)
+    with step("Amendements (Assemblée nationale)"):
+        amdts, n_amdts = an.load_amendements()
+    with step("Questions écrites (Assemblée nationale)"):
+        questions, n_questions = an.load_questions()
     with step("Ancienneté (Wikidata)"):
         wd = wikidata.legislatures(sorted(ids))
     with step("Déclarations d'intérêts (HATVP)"):
         decl = hatvp.load_declarations(deputes)
+    with step("Répertoire des représentants d'intérêts (HATVP)"):
+        lobby = lobbying.load()
     with step("Portraits officiels"):
         download_photos(deputes)
 
@@ -171,6 +177,9 @@ def main() -> None:
             "participationSolennels": None if d["preside"] else m.get("participationSolennels"),
             "loyaute": m.get("loyaute"),
             "votes": m.get("votes"),
+            "amendements": amdts.get(d["id"], {}).get("deposes", 0),
+            "amendementsAdoptes": amdts.get(d["id"], {}).get("adoptes", 0),
+            "questions": questions.get(d["id"], {}).get("posees", 0),
             "revenusAnnexes": dec["revenusAnnexes"] if dec else None,
             "anneeRevenus": dec["anneeRevenus"] if dec else None,
             "urlAN": d["urlAN"],
@@ -200,8 +209,9 @@ def main() -> None:
             "interets": {k: dec[k] for k in ("date", "url", "activites", "participations", "mandatsElectifs", "conjoint")} if dec else None,
             "votesCles": votes_cles[:40],
             "dissidences": m.get("dissidences"),
-            "amendements": None,
-            "questions": None,
+            "amendements": {"deposes": public["amendements"], "adoptes": public["amendementsAdoptes"]},
+            "questions": public["questions"],
+            "questionsRepondues": questions.get(d["id"], {}).get("repondues", 0),
             "condamnations": [],
             "presidentielles": [],
             "elections": [],
@@ -230,6 +240,7 @@ def main() -> None:
             },
         )
     write_json(DIST / "scrutins.json", index)
+    write_json(DIST / "lobbying.json", lobby)
 
     n_votes = sum(len(s["votes"]) for s in scrutins)
     checks = [
@@ -247,11 +258,14 @@ def main() -> None:
             "dureeSecondes": round(time.perf_counter() - started, 1),
             "etapes": STEPS,
             "controles": checks,
-            "volumes": {"deputes": len(deputes), "scrutins": len(scrutins), "votes": n_votes, "declarations": len(decl)},
+            "volumes": {"deputes": len(deputes), "scrutins": len(scrutins), "votes": n_votes, "declarations": len(decl), "amendements": n_amdts, "questions": n_questions},
             "sources": {
                 "amo": {"label": "Assemblée nationale, députés, mandats et organes (AMO)", "url": an.AMO10, "records": len(deputes), **fetch_info(f"an{an.LEGISLATURE}_amo10.json.zip")},
                 "scrutins": {"label": "Assemblée nationale, scrutins publics", "url": an.SCRUTINS, "records": len(scrutins), **fetch_info(f"an{an.LEGISLATURE}_scrutins.json.zip")},
+                "amendements": {"label": "Assemblée nationale, amendements", "url": an.AMENDEMENTS, "records": n_amdts, **fetch_info(f"an{an.LEGISLATURE}_amendements.json.zip")},
+                "questions": {"label": "Assemblée nationale, questions écrites", "url": an.QUESTIONS, "records": n_questions, **fetch_info(f"an{an.LEGISLATURE}_questions.json.zip")},
                 "hatvp": {"label": "HATVP, déclarations d'intérêts et d'activités", "url": hatvp.DECLARATIONS, "records": len(decl), **fetch_info("hatvp_declarations.xml")},
+                "agora": {"label": "HATVP, répertoire des représentants d'intérêts", "url": lobbying.AGORA, "records": lobby["organisations"], **fetch_info("hatvp_agora.json")},
                 "wikidata": {"label": "Wikidata, mandats de député antérieurs", "url": "https://query.wikidata.org/", "records": len(wd)},
             },
         },

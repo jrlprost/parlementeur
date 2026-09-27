@@ -244,3 +244,53 @@ def load_scrutins():
     scrutins.sort(key=lambda x: x["numero"])
     log(f"scrutins : {len(scrutins)}")
     return scrutins
+
+
+AMENDEMENTS = f"{AN_BASE}/{LEGISLATURE}/loi/amendements_div_legis/Amendements.json.zip"
+QUESTIONS = f"{AN_BASE}/{LEGISLATURE}/questions/questions_ecrites/Questions_ecrites.json.zip"
+
+
+def load_amendements() -> tuple[dict[str, dict], int]:
+    """Amendements déposés (en premier signataire) et adoptés par député, en séance et en commission."""
+    p = fetch(AMENDEMENTS, f"an{LEGISLATURE}_amendements.json.zip", max_age_h=20)
+    out: dict[str, dict] = {}
+    total = 0
+    with zipfile.ZipFile(p) as z:
+        for n in z.namelist():
+            if not n.endswith(".json"):
+                continue
+            a = json.loads(z.read(n))["amendement"]
+            total += 1
+            auteur = (a.get("signataires") or {}).get("auteur") or {}
+            ref = val(auteur.get("acteurRef"))
+            if not ref or auteur.get("typeAuteur") != "Député":
+                continue
+            sort = val((a.get("cycleDeVie") or {}).get("sort"))
+            row = out.setdefault(ref, {"deposes": 0, "adoptes": 0})
+            row["deposes"] += 1
+            if sort == "Adopté":
+                row["adoptes"] += 1
+    log(f"amendements : {total:,} lus, {sum(r['deposes'] for r in out.values()):,} déposés par des députés")
+    return out, total
+
+
+def load_questions() -> tuple[dict[str, dict], int]:
+    """Questions écrites posées par chaque député, et part ayant reçu une réponse du gouvernement."""
+    p = fetch(QUESTIONS, f"an{LEGISLATURE}_questions.json.zip", max_age_h=20)
+    out: dict[str, dict] = {}
+    total = 0
+    with zipfile.ZipFile(p) as z:
+        for n in z.namelist():
+            if not n.endswith(".json"):
+                continue
+            q = json.loads(z.read(n))["question"]
+            total += 1
+            ref = val(((q.get("auteur") or {}).get("identite") or {}).get("acteurRef"))
+            if not ref:
+                continue
+            row = out.setdefault(ref, {"posees": 0, "repondues": 0})
+            row["posees"] += 1
+            if val(q.get("textesReponse")):
+                row["repondues"] += 1
+    log(f"questions écrites : {total:,}")
+    return out, total
