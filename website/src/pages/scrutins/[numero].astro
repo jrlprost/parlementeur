@@ -3,6 +3,7 @@ import Base from '../../layouts/Base.astro';
 import HemicycleVotes from '../../components/HemicycleVotes.astro';
 import { load, readOptional, fmtDate, fmtInt, type Scrutin, type ScrutinIndex } from '../../lib/data';
 import { seatVotes, seatCodes, VOTE_LABEL } from '../../lib/scrutin';
+import { OG_BASE, scrutinHash } from '../../lib/og-scrutin';
 
 export function getStaticPaths() {
   const idx = readOptional<ScrutinIndex[]>('scrutins.json') ?? [];
@@ -28,7 +29,7 @@ const rebels = deputes
 const verdict = s.adopte ? 'Adopté' : 'Rejeté';
 const description = `${verdict} par ${fmtInt(s.pour)} voix pour et ${fmtInt(s.contre)} contre. Le vote de chaque député et de chaque groupe, avec la source officielle.`;
 ---
-<Base title={s.titre} description={description} og={s.solennel || s.motion ? `/og/scrutin-${s.numero}.png` : '/og/vue-groupes.png'} section="scrutins">
+<Base title={s.titre} description={description} og={`${OG_BASE}/scrutin-${s.numero}.png?v=${scrutinHash(s, deputes)}`} section="scrutins">
   <article class="stack" style="--gap:32px">
     <header class="stack" style="--gap:12px">
       <p class="kicker">Scrutin n° {s.numero} · {fmtDate(s.date)}{s.solennel ? ' · vote solennel' : ''}</p>

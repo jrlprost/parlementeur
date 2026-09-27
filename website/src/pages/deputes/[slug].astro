@@ -144,11 +144,15 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
       {det?.condamnations?.length ? (
         <ul class="plain">
           {det.condamnations.map((c) => (
-            <li><b>{fmtDate(c.date)}</b>, {c.juridiction} : {c.faits}. Peine : {c.peine}. <a href={c.source.url}>{c.source.label}</a></li>
+            <li class="stack" style="--gap:4px">
+              <p><b>{c.faits}</b></p>
+              <p>{c.juridiction}, {fmtDate(c.date)}. Peine : {c.peine}.</p>
+              <p class="muted small">{c.definitive_depuis ? `Définitive depuis le ${fmtDate(c.definitive_depuis)}. ` : ''}{c.precision} Source : <a href={c.source.url}>{c.source.label}</a>.</p>
+            </li>
           ))}
         </ul>
       ) : (
-        <p class="muted">Aucune condamnation définitive recensée. Seules les condamnations définitives, documentées par une source primaire, sont publiées : <a href="/methode/#condamnations">notre règle</a>.</p>
+        <p class="muted">Aucune condamnation définitive recensée selon <a href="/methode/#condamnations">notre règle</a> : seules sont publiées les condamnations pénales définitives, confirmées par une source, et non effacées par la réhabilitation légale.</p>
       )}
     </section>
 

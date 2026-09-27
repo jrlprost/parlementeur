@@ -101,7 +101,7 @@ export type DeputeDetail = Depute & {
   votesCles: { numero: number; date: string; titre: string; vote: VoteCode; ligneGroupe: VoteCode | null }[];
   dissidences: number | null;
   questionsRepondues: number;
-  condamnations: { date: string; juridiction: string; faits: string; peine: string; source: Source }[];
+  condamnations: { date: string; definitive_depuis: string | null; juridiction: string; faits: string; peine: string; precision?: string; source: Source }[];
   presidentielles: { annee: number; tour1: number | null; tour2: number | null; elu: boolean; source: string }[];
   elections: { annee: number; tour: number; pct: number | null; voix: number; nuance: string; participation: number | null; adversaires: { nom: string; nuance: string; pct: number | null }[]; source: string }[];
   sources: Source[];
