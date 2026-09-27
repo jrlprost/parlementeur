@@ -290,9 +290,30 @@ def parse_seance_times(xml: bytes) -> dict:
                 susp_minutes += delta
                 n_susp += 1
 
+        # Prises de parole : position de chaque paragraphe du député dans la séance.
+        orders = []
+        speakers: dict[str, list[int]] = {}
+        for p in root.iter("{http://schemas.assemblee-nationale.fr/referentiel}paragraphe"):
+            o = p.get("ordre_absolu_seance")
+            if not o or not o.isdigit():
+                continue
+            o = int(o)
+            orders.append(o)
+            a = p.get("id_acteur") or ""
+            if a.startswith("PA"):
+                w = speakers.setdefault(a, [o, o, 0])
+                w[0] = min(w[0], o)
+                w[1] = max(w[1], o)
+                # La présidence de séance prouve la présence, mais ce n'est pas une intervention.
+                nom = (p.findtext("{http://schemas.assemblee-nationale.fr/referentiel}orateurs/{http://schemas.assemblee-nationale.fr/referentiel}orateur/{http://schemas.assemblee-nationale.fr/referentiel}nom") or "").strip().lower()
+                if not (nom.startswith("m. le président") or nom.startswith("mme la présidente")):
+                    w[2] += 1
+        span = (max(orders) - min(orders) + 1) if orders else 0
         return {
             "uid": uid,
             "seance_uid": seance_uid,
+            "paragraphes": span,
+            "orateurs": speakers,
             "session_ref": session_ref,
             "date": ref_date.isoformat(),
             "ouverture": f"{ouv_time[0]:02d}:{ouv_time[1]:02d}",

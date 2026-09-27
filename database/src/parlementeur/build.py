@@ -127,6 +127,11 @@ def main() -> None:
     with step("Agenda : séances et réunions de commission (Assemblée nationale)"):
         reels = comptes_rendus.load()
         events, presence, monthly, seance_index = agenda.load(an.load_organe_names(), scrutins, ids, reels)
+        # Nombre de paragraphes prononcés par chaque député en séance publique.
+        interventions_by_id: dict[str, int] = {}
+        for cr in reels.values():
+            for a, (_, _, n) in cr.get("orateurs", {}).items():
+                interventions_by_id[a] = interventions_by_id.get(a, 0) + n
     with step("Présence et discipline de vote (DuckDB)"):
         metrics = vote_metrics(deputes, scrutins)
     with step("Amendements (Assemblée nationale)"):
@@ -211,6 +216,7 @@ def main() -> None:
             "votes": m.get("votes"),
             "scrutinsPossibles": m.get("eligibles"),
             "commissions": presence.get(d["id"]),
+            "interventions": interventions_by_id.get(d["id"], 0),
             "joursVote": len({sc["date"] for sc in scrutins if d["id"] in sc["votes"] and sc["votes"][d["id"]] != "n"}),
             "amendements": amdts.get(d["id"], {}).get("deposes", 0),
             "amendementsAdoptes": amdts.get(d["id"], {}).get("adoptes", 0),
@@ -297,11 +303,13 @@ def main() -> None:
         for a, c in sc["votes"].items():
             if c != "n":
                 vote_days.setdefault(a, {}).setdefault(mo, set()).add(sc["date"])
-    voters_by_seance: dict[str, set] = {}
+    # Présence estimée en séance : part des scrutins de la séance auxquels le député a pris part,
+    # ou fenêtre entre sa première et sa dernière prise de parole, la plus grande des deux.
+    seance_scrutins: dict[str, list[dict]] = {}
     for sc in scrutins:
         if sc.get("seanceRef"):
-            voters_by_seance.setdefault(sc["seanceRef"], set()).update(sc["votes"].keys())
-    seance_min: dict[str, dict[str, list[int]]] = {}
+            seance_scrutins.setdefault(sc["seanceRef"], []).append(sc)
+    seance_min: dict[str, dict[str, list[float]]] = {}
     weeks_by_month: dict[str, set] = {}
     for uid, ev in seance_index.items():
         d0 = _date.fromisoformat(ev["d"][:10])
@@ -309,9 +317,22 @@ def main() -> None:
         if d0 <= _date.today():
             weeks_by_month.setdefault(mo, set()).add(d0.isocalendar()[:2])
         dur = (ev["rm"] - ev.get("rs", 0)) if ev.get("rm") is not None else (ev.get("m") or 0)
-        for a in voters_by_seance.get(uid, ()):
-            row = seance_min.setdefault(a, {}).setdefault(mo, [0, 0])
-            row[0] += dur
+        scs = seance_scrutins.get(uid, [])
+        share: dict[str, float] = {}
+        if scs:
+            counts: dict[str, int] = {}
+            for sc in scs:
+                for a in sc["votes"]:
+                    counts[a] = counts.get(a, 0) + 1
+            for a, n in counts.items():
+                share[a] = n / len(scs)
+        cr = reels.get(uid)
+        if cr and cr.get("paragraphes"):
+            for a, (first, last, _n) in cr["orateurs"].items():
+                share[a] = max(share.get(a, 0.0), (last - first + 1) / cr["paragraphes"])
+        for a, f in share.items():
+            row = seance_min.setdefault(a, {}).setdefault(mo, [0.0, 0])
+            row[0] += dur * min(1.0, f)
             row[1] += 1
     months = sorted({m for v in monthly.values() for m in v} | {m for v in vote_days.values() for m in v} | set(weeks_by_month))
     write_json(
@@ -326,7 +347,7 @@ def main() -> None:
                     [
                         *monthly[d["id"]].get(m, [0, 0, 0]),
                         len(vote_days.get(d["id"], {}).get(m, ())),
-                        *seance_min.get(d["id"], {}).get(m, [0, 0]),
+                        *[round(x) for x in seance_min.get(d["id"], {}).get(m, [0, 0])],
                     ]
                     for m in months
                 ]
