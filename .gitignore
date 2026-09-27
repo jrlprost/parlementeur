@@ -20,3 +20,4 @@ database/dist/
 .env.*
 .DS_Store
 .wrangler/
+.playwright-cli/
