@@ -2,7 +2,7 @@
 import { layoutHemicycle } from '../lib/hemicycle';
 import { VIEWS, viewById } from '../lib/views';
 import type { Depute, Groupe } from '../lib/data';
-import { fmtPct, fmtEur } from '../lib/data';
+import { fmtPct, fmtEur, readOptional } from '../lib/data';
 
 interface Props {
   deputes: Depute[];
@@ -51,8 +51,36 @@ const people = deputes.map((d) => ({
   ph: d.photo,
 }));
 const groupNames = Object.fromEntries(groupes.map((g) => [g.sigle, g.nom]));
+
+// Plan réel : position de chaque siège d'après le plan publié par l'Assemblée, ramenée dans le même cadre.
+const plan = readOptional<{ source: string; sieges: Record<string, [number, number]> }>('sieges.json');
+let real: [number, number][] | null = null;
+let realDot = L.dot;
+if (plan) {
+  const pts = Object.values(plan.sieges);
+  const minX = Math.min(...pts.map((p) => p[0])), maxX = Math.max(...pts.map((p) => p[0]));
+  const minY = Math.min(...pts.map((p) => p[1])), maxY = Math.max(...pts.map((p) => p[1]));
+  const pad = L.dot * 2;
+  const k = Math.min((L.width - 2 * pad) / (maxX - minX), (L.height - 2 * pad) / (maxY - minY));
+  const ox = (L.width - (maxX - minX) * k) / 2, oy = (L.height - (maxY - minY) * k) / 2;
+  const pos = deputes.map((d) => (d.place && plan.sieges[String(Number(d.place))]) || null);
+  if (pos.every(Boolean)) {
+    real = pos.map((p, i) => [+(ox + (p![0] - minX) * k - L.seats[i].x).toFixed(1), +(oy + (p![1] - minY) * k - L.seats[i].y).toFixed(1)]);
+    // Rayon : un peu moins de la moitié de la distance au plus proche voisin, sur un échantillon.
+    const abs = pos.map((p) => [ox + (p![0] - minX) * k, oy + (p![1] - minY) * k]);
+    let dmin = Infinity;
+    for (let i = 0; i < abs.length; i += 7) for (let j = 0; j < abs.length; j++) if (i !== j) dmin = Math.min(dmin, Math.hypot(abs[i][0] - abs[j][0], abs[i][1] - abs[j][1]));
+    realDot = Math.min(L.dot, dmin * 0.46);
+  }
+}
 ---
 <section class="hemi-block" data-view={v.id}>
+  {real && (
+    <div class="layout-toggle seg" role="group" aria-label="Disposition">
+      <button type="button" data-layout="arcs" aria-pressed="true">Par groupe</button>
+      <button type="button" data-layout="reel" aria-pressed="false">Plan réel</button>
+    </div>
+  )}
   <div class="views" role="toolbar" aria-label="Thématique">
     <div class="seg">
       {VIEWS.map((vw) => (
@@ -107,7 +135,7 @@ const groupNames = Object.fromEntries(groupes.map((g) => [g.sigle, g.nom]));
     </datalist>
   </div>
 
-  <script type="application/json" class="hemi-data" set:html={JSON.stringify({ codes, colors: groupes.map((g) => g.couleur), people, groupNames, views: VIEWS.map(({ id, titre, intro, kind, legende }) => ({ id, titre, intro, kind, legende })) })}></script>
+  <script type="application/json" class="hemi-data" set:html={JSON.stringify({ real, realDot: +realDot.toFixed(2), dot: +L.dot.toFixed(2), codes, colors: groupes.map((g) => g.couleur), people, groupNames, views: VIEWS.map(({ id, titre, intro, kind, legende }) => ({ id, titre, intro, kind, legende })) })}></script>
 </section>
 
 <script>
@@ -116,7 +144,7 @@ const groupNames = Object.fromEntries(groupes.map((g) => [g.sigle, g.nom]));
 
   for (const block of document.querySelectorAll<HTMLElement>('.hemi-block')) {
     const data = JSON.parse(block.querySelector('.hemi-data')!.textContent!) as {
-      codes: Record<string, number[]>; colors: string[]; people: Person[]; groupNames: Record<string, string>; views: ViewLite[];
+      real: [number, number][] | null; realDot: number; dot: number; codes: Record<string, number[]>; colors: string[]; people: Person[]; groupNames: Record<string, string>; views: ViewLite[];
     };
     const toFill = (kind: string, c: number) => {
       if (c < 0) return 'var(--ink-8)';
@@ -173,7 +201,20 @@ const groupNames = Object.fromEntries(groupes.map((g) => [g.sigle, g.nom]));
       if (push) history.pushState({ view: id }, '', id === 'groupes' ? '/' : `/vue/${id}/`);
     }
 
-    block.querySelector('svg')!.addEventListener('click', (e) => {
+    const svgEl = block.querySelector('svg')!;
+    block.querySelectorAll<HTMLButtonElement>('.layout-toggle button').forEach((b) =>
+      b.addEventListener('click', () => {
+        const reel = b.dataset.layout === 'reel';
+        block.querySelectorAll('.layout-toggle button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        svgEl.classList.toggle('reel', reel);
+        circles.forEach((c, i) => {
+          const d = data.real![i];
+          c.style.transform = reel ? `translate(${d[0]}px, ${d[1]}px)` : '';
+          c.setAttribute('r', String(reel ? data.realDot : data.dot));
+        });
+      }),
+    );
+    svgEl.addEventListener('click', (e) => {
       const c = (e.target as Element).closest('circle');
       if (c) open(Number(c.getAttribute('data-i')));
     });
@@ -216,7 +257,10 @@ const groupNames = Object.fromEntries(groupes.map((g) => [g.sigle, g.nom]));
   .hemi-grid { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); }
   .hemi-fig { margin: 0; display: grid; gap: 12px; }
   .hemi { width: 100%; max-width: 900px; height: auto; display: block; touch-action: manipulation; }
-  .hemi circle { cursor: pointer; transition: fill 0.35s ease; }
+  .hemi circle { cursor: pointer; transition: fill 0.35s ease, transform 0.7s cubic-bezier(.4,0,.2,1); }
+  .hemi.reel .hemi-total, .hemi.reel .hemi-sub { opacity: 0; }
+  .hemi-total, .hemi-sub { transition: opacity .3s; }
+  .layout-toggle { justify-self: start; }
   .hemi circle:hover { stroke: var(--ink); stroke-width: 2; }
   .hemi :global(circle.sel) { stroke: var(--ink); stroke-width: 3; }
   .hemi-total { font-family: var(--serif); font-weight: 600; font-size: 52px; fill: var(--ink); }
