@@ -1,0 +1,104 @@
+---
+// Recherche globale de l'en-tête : députés, scrutins, groupes, organisations de lobbying et pages du site.
+---
+<div class="search" role="search">
+  <button class="search-toggle" type="button" aria-label="Rechercher" aria-expanded="false" aria-controls="q-global">
+    <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M13 13l4.5 4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+  </button>
+  <div class="search-box">
+    <label for="q-global" class="sr-only">Rechercher un député, un scrutin, un groupe, une organisation</label>
+    <input id="q-global" type="search" placeholder="Rechercher…  /" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="q-results" aria-autocomplete="list" />
+    <div class="search-panel" id="q-results" role="listbox" hidden></div>
+  </div>
+</div>
+
+<script>
+  type Row = [string, string, string, string];
+  const root = document.querySelector<HTMLElement>('.search')!;
+  const input = root.querySelector<HTMLInputElement>('#q-global')!;
+  const panel = root.querySelector<HTMLElement>('.search-panel')!;
+  const toggle = root.querySelector<HTMLButtonElement>('.search-toggle')!;
+  let rows: Row[] | null = null;
+  let norms: string[] = [];
+  let active = -1;
+  const norm = (x: string) => x.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[-'’]/g, ' ');
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  const ORDER = ['Député', 'Groupe', 'Thématique', 'Page', 'Lobbying', 'Scrutin'];
+  const LIMIT: Record<string, number> = { Député: 6, Groupe: 3, Thématique: 3, Page: 3, Lobbying: 4, Scrutin: 6 };
+
+  async function ensure() {
+    if (rows) return;
+    rows = await fetch('/recherche.json').then((r) => r.json());
+    norms = rows!.map((r) => norm(r[1]));
+  }
+
+  function render() {
+    const words = norm(input.value.trim()).split(/\s+/).filter(Boolean);
+    if (!rows || input.value.trim().length < 2) { panel.hidden = true; input.setAttribute('aria-expanded', 'false'); return; }
+    const groups: Record<string, number[]> = {};
+    for (let i = 0; i < rows.length; i++) {
+      const t = rows[i][0];
+      if ((groups[t]?.length ?? 0) >= LIMIT[t]) continue;
+      if (words.every((w) => norms[i].includes(w))) (groups[t] ??= []).push(i);
+    }
+    const html = ORDER.filter((t) => groups[t]?.length)
+      .map((t) => `<p class="sg">${t === 'Député' ? 'Députés' : t === 'Scrutin' ? 'Scrutins' : t === 'Groupe' ? 'Groupes' : t === 'Thématique' ? 'Thématiques' : t === 'Page' ? 'Pages' : 'Lobbying'}</p>` +
+        groups[t].map((i) => `<a role="option" href="${rows![i][3]}"><b>${esc(rows![i][1])}</b>${rows![i][2] ? `<span>${esc(rows![i][2])}</span>` : ''}</a>`).join(''))
+      .join('');
+    panel.innerHTML = html || `<p class="none">Aucun résultat pour « ${esc(input.value.trim())} ». Parlementeur couvre les 577 députés en exercice, les scrutins depuis 2024, les groupes et le lobbying ; les anciens députés et le gouvernement arrivent bientôt.</p>`;
+    panel.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+    active = -1;
+  }
+
+  input.addEventListener('focus', ensure);
+  input.addEventListener('input', async () => { await ensure(); render(); });
+  input.addEventListener('keydown', (e) => {
+    const links = [...panel.querySelectorAll<HTMLAnchorElement>('a')];
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      active = Math.max(0, Math.min(links.length - 1, active + (e.key === 'ArrowDown' ? 1 : -1)));
+      links.forEach((l, i) => l.classList.toggle('on', i === active));
+      links[active]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      const l = links[active] ?? links[0];
+      if (l) { e.preventDefault(); location.href = l.href; }
+    } else if (e.key === 'Escape') {
+      panel.hidden = true;
+      input.blur();
+      root.classList.remove('open');
+    }
+  });
+  document.addEventListener('click', (e) => { if (!root.contains(e.target as Node)) { panel.hidden = true; root.classList.remove('open'); toggle.setAttribute('aria-expanded', 'false'); } });
+  document.addEventListener('keydown', (e) => {
+    const t = e.target as HTMLElement;
+    if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(t.tagName)) { e.preventDefault(); root.classList.add('open'); input.focus(); }
+  });
+  toggle.addEventListener('click', () => {
+    const open = root.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', String(open));
+    if (open) input.focus();
+  });
+</script>
+
+<style>
+  .search { position: relative; }
+  .search-toggle { display: none; background: none; border: 1px solid var(--ink-16); border-radius: 50%; width: 36px; height: 36px; place-items: center; }
+  .search-box { position: relative; }
+  #q-global { font: inherit; font-size: 0.9rem; width: 230px; padding: 7px 12px; border: 1px solid var(--ink-16); border-radius: 999px; background: var(--bg); color: var(--ink); transition: width 0.2s; }
+  #q-global:focus { width: 320px; outline: 2px solid var(--ink); outline-offset: 1px; }
+  .search-panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: min(460px, calc(100vw - 32px)); max-height: 70vh; overflow: auto; background: var(--bg); border: 1px solid var(--ink-16); border-radius: 10px; box-shadow: 0 14px 40px color-mix(in srgb, var(--ink) 16%, transparent); padding: 6px; }
+  .search-panel :global(.sg) { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-62); font-weight: 600; padding: 8px 10px 2px; }
+  .search-panel :global(a) { display: grid; gap: 1px; padding: 7px 10px; border-radius: 6px; text-decoration: none; }
+  .search-panel :global(a b) { font-weight: 600; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .search-panel :global(a span) { font-size: 0.8rem; color: var(--ink-62); }
+  .search-panel :global(a:hover), .search-panel :global(a.on) { background: var(--ink-4); }
+  .search-panel :global(.none) { padding: 10px; font-size: 0.88rem; color: var(--ink-62); }
+  @media (max-width: 760px) {
+    .search-toggle { display: grid; }
+    .search-box { display: none; position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; }
+    .search.open .search-box { display: block; }
+    #q-global, #q-global:focus { width: min(360px, calc(100vw - 32px)); }
+    .search-panel { position: static; margin-top: 6px; }
+  }
+</style>
