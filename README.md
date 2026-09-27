@@ -8,7 +8,7 @@ Site : [parlementeur.fr](https://parlementeur.fr)
 
 - Uniquement des données publiques officielles, et chaque chiffre renvoie à sa source.
 - Aucun cookie, aucun traceur, aucune ressource tierce.
-- Les déclarations de patrimoine des parlementaires ne sont jamais lues ni publiées (article LO 135-2 du code électoral).
+- Les déclarations de patrimoine des parlementaires ne sont jamais lues ni publiées (article 26 de la loi n° 2013-907 du 11 octobre 2013 ; consultation en préfecture selon l'article LO 135-2 du code électoral).
 - Seules les condamnations définitives, documentées par une source primaire, sont publiées.
 
 ## Structure

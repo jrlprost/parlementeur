@@ -1,7 +1,7 @@
 """HATVP : déclarations d'intérêts et d'activités des députés.
 
 Les déclarations de patrimoine des parlementaires (types DSP) ne sont jamais lues ni publiées :
-l'article LO 135-2 du code électoral interdit de les divulguer.
+l'article 26 (III) de la loi n° 2013-907 du 11 octobre 2013 interdit de les divulguer.
 """
 
 from __future__ import annotations
