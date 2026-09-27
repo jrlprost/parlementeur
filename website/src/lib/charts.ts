@@ -150,3 +150,60 @@ export function columns(items: { k: number; n: number }[], note: (k: number) => 
   }
   return `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img"><line x1="${L}" x2="${W - L}" y1="${H - B}" y2="${H - B}" class="base"/>${body}</svg>`;
 }
+
+/** Carte proportionnelle (treemap « squarified ») : la surface de chaque case est proportionnelle à sa valeur. */
+export function treemap(items: { label: string; v: number; color?: string }[], W = 360, H = 300): string {
+  const tot = items.reduce((a, b) => a + b.v, 0) || 1;
+  const nodes = [...items].sort((a, b) => b.v - a.v).map((i) => ({ ...i, a: (i.v / tot) * W * H }));
+  const out: { i: (typeof nodes)[number]; x: number; y: number; w: number; h: number }[] = [];
+  let x = 0, y = 0, w = W, h = H;
+  const worst = (row: typeof nodes, side: number) => {
+    const s = row.reduce((a, b) => a + b.a, 0);
+    const mx = Math.max(...row.map((r) => r.a)), mn = Math.min(...row.map((r) => r.a));
+    return Math.max((side * side * mx) / (s * s), (s * s) / (side * side * mn));
+  };
+  let rest = nodes;
+  while (rest.length) {
+    const side = Math.min(w, h);
+    let row = [rest[0]];
+    let i = 1;
+    while (i < rest.length && worst([...row, rest[i]], side) <= worst(row, side)) row.push(rest[i++]);
+    rest = rest.slice(i);
+    const s = row.reduce((a, b) => a + b.a, 0);
+    if (w >= h) {
+      const cw = s / h;
+      let cy = y;
+      for (const r of row) { const ch = r.a / cw; out.push({ i: r, x, y: cy, w: cw, h: ch }); cy += ch; }
+      x += cw; w -= cw;
+    } else {
+      const ch = s / w;
+      let cx = x;
+      for (const r of row) { const cw = r.a / ch; out.push({ i: r, x: cx, y, w: cw, h: ch }); cx += cw; }
+      y += ch; h -= ch;
+    }
+  }
+  const body = out
+    .map(({ i, x, y, w, h }, k) => {
+      const fill = i.color ?? `color-mix(in srgb, var(--ramp-to) ${Math.round(95 - (k / out.length) * 70)}%, var(--ramp-from))`;
+      const light = k > out.length * 0.45;
+      const fits = w > 44 && h > 26;
+      const words = i.label.split(/[ ,]+/);
+      const line1 = fits ? esc(words.slice(0, 2).join(' ')) : '';
+      return `<g><rect x="${f1(x + 1)}" y="${f1(y + 1)}" width="${f1(Math.max(0, w - 2))}" height="${f1(Math.max(0, h - 2))}" rx="3" fill="${fill}"><title>${esc(i.label)} : ${i.v.toLocaleString('fr-FR')}</title></rect>` +
+        (fits ? `<text x="${f1(x + 6)}" y="${f1(y + 16)}" class="tm${light ? ' dk' : ''}">${line1}</text><text x="${f1(x + 6)}" y="${f1(y + 29)}" class="tmv${light ? ' dk' : ''}">${i.v.toLocaleString('fr-FR')}</text>` : '') + '</g>';
+    })
+    .join('');
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart treemap" role="img">${body}</svg>`;
+}
+
+/** Bande de répartition : tous les députés en points discrets, le député concerné en évidence. */
+export function strip(all: number[], me: number, ax: { min: number; max: number; log?: boolean }, color: string, groupMed?: number): string {
+  const W = 360, H = 34, L = 6, R = 6;
+  const t = (v: number) => (ax.log ? Math.log10(Math.max(v, 1)) : v);
+  const a = t(ax.min), b = t(ax.max);
+  const x = (v: number) => L + ((Math.min(Math.max(t(v), a), b) - a) / (b - a)) * (W - L - R);
+  // Léger étalement vertical déterministe pour que les points ne se recouvrent pas tous.
+  const dots = all.map((v, i) => `<circle cx="${f1(x(v))}" cy="${f1(17 + (((i * 37) % 11) - 5) * 1.6)}" r="1.7" class="sd"/>`).join('');
+  const gm = groupMed != null ? `<line x1="${f1(x(groupMed))}" x2="${f1(x(groupMed))}" y1="4" y2="30" class="gm"/>` : '';
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart strip" role="img">${dots}${gm}<circle cx="${f1(x(me))}" cy="17" r="6.5" fill="${color}" stroke="var(--bg)" stroke-width="2"/></svg>`;
+}
