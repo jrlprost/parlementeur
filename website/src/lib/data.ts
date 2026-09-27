@@ -102,8 +102,8 @@ export type DeputeDetail = Depute & {
   dissidences: number | null;
   questionsRepondues: number;
   condamnations: { date: string; juridiction: string; faits: string; peine: string; source: Source }[];
-  presidentielles: { annee: number; tour1: number | null }[];
-  elections: { annee: number; scrutin: string; circonscription: string; resultat: string; pct: number | null }[];
+  presidentielles: { annee: number; tour1: number | null; tour2: number | null; elu: boolean; source: string }[];
+  elections: { annee: number; tour: number; pct: number | null; voix: number; nuance: string; participation: number | null; adversaires: { nom: string; nuance: string; pct: number | null }[]; source: string }[];
   sources: Source[];
 };
 

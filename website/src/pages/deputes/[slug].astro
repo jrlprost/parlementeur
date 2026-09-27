@@ -101,6 +101,30 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
       )}
     </section>
 
+    {det?.elections?.length ? (
+      <section class="stack" style="--gap:12px">
+        <h2>Son élection</h2>
+        {det.elections.map((e) => (
+          <p>
+            Élu{d.femme ? 'e' : ''} en {e.annee} au {e.tour === 1 ? 'premier' : 'second'} tour avec <b class="num">{e.pct?.toLocaleString('fr-FR')} %</b> des suffrages exprimés ({fmtInt(e.voix)} voix, étiquette {e.nuance}), pour une participation de {e.participation?.toLocaleString('fr-FR')} %.
+            {e.adversaires.length > 0 && <> Face à : {e.adversaires.map((a) => `${a.nom} (${a.nuance}, ${a.pct?.toLocaleString('fr-FR')} %)`).join(', ')}.</>}
+          </p>
+        ))}
+        <p class="src">Source : <a href={det.elections[0].source}>ministère de l'Intérieur, résultats définitifs</a>. Les étiquettes (nuances) sont attribuées par le ministère.</p>
+      </section>
+    ) : null}
+
+    {det?.presidentielles?.length ? (
+      <section class="stack" style="--gap:12px">
+        <h2>Candidatures à l'élection présidentielle</h2>
+        <ul class="plain">
+          {det.presidentielles.map((p) => (
+            <li><b>{p.annee}</b> : {p.tour1 != null ? `${p.tour1.toLocaleString('fr-FR')} % au premier tour` : 'candidature'}{p.tour2 != null ? `, ${p.tour2.toLocaleString('fr-FR')} % au second tour` : ''}{p.elu ? ' (élu)' : ''}. <a class="small" href={p.source}>source</a></li>
+          ))}
+        </ul>
+      </section>
+    ) : null}
+
     <section class="stack" style="--gap:12px">
       <h2>Condamnations définitives</h2>
       {det?.condamnations?.length ? (
