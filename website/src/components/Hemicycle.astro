@@ -134,7 +134,7 @@ if (plan) {
     const data = JSON.parse(block.querySelector('.hemi-data')!.textContent!) as {
       real: [number, number][] | null; realDot: number; dot: number; people: Person[]; groupNames: Record<string, string>;
     };
-    const circles = [...block.querySelectorAll<SVGCircleElement>('circle')];
+    const circles = [...block.querySelectorAll<SVGCircleElement>('svg.hemi circle')];
     const panel = block.querySelector<HTMLElement>('.panel')!;
     const body = panel.querySelector<HTMLElement>('.panel-body')!;
     const baseUrl = location.pathname;
@@ -171,7 +171,7 @@ if (plan) {
       selected = null;
       if (push) history.pushState({}, '', baseUrl);
     }
-    const svgEl = block.querySelector('svg')!;
+    const svgEl = block.querySelector<SVGSVGElement>('svg.hemi')!;
     block.querySelectorAll<HTMLButtonElement>('.layout-toggle button').forEach((btn) =>
       btn.addEventListener('click', () => {
         const reel = btn.dataset.layout === 'reel';
