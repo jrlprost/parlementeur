@@ -94,6 +94,8 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
   let mode: 'mois' | 'semaine' | 'annee' = 'mois';
   let cursor = new Date(today);
   let showAll = false;
+  const small = () => window.matchMedia('(max-width: 700px)').matches;
+  let selectedDay = key(today);
   let sortKey = 2;
   let sortDir = -1;
 
@@ -127,8 +129,54 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
     const futur = e.start > today || e.e ? ' futur' : '';
     const cls = e.t === 'seance' ? 'c-seance' : 'c-com';
     const vote = e.v ? ` <span class="vb">${e.v} vote${e.v > 1 ? 's' : ''}</span>` : '';
-    const lbl = e.t === 'seance' ? 'Séance' : esc(e.o.replace(/^Commission (des |de la |de l'|du )?/i, '').slice(0, compact ? 22 : 60));
+    const lbl = e.t === 'seance' ? 'Séance' : esc((e.o || 'Réunion').replace(/^Commission (des |de la |de l'|du )?/i, '').slice(0, compact ? 22 : 60));
     return `<button type="button" class="chip ${cls}${futur}" data-i="${events.indexOf(e as never)}">${hm(e.start)} ${lbl}${vote}</button>`;
+  }
+
+  function dayList(k: string) {
+    const evs = (byDay.get(k) ?? []).slice().sort((a, b) => Number(b.t === 'seance') - Number(a.t === 'seance') || +a.start - +b.start);
+    const [y, m, d] = k.split('-').map(Number);
+    const title = `${JOURS[(new Date(y, m - 1, d).getDay() + 6) % 7]} ${d} ${MOIS[m - 1]}`;
+    if (!evs.length) return `<div class="dl"><h3>${title}</h3><p class="muted small">Aucune séance ni réunion.</p></div>`;
+    return `<div class="dl"><h3>${title}</h3>${evs.map((e) => chip(e)).join('')}</div>`;
+  }
+
+  // Mobile : grille compacte à pastilles, et liste des réunions du jour touché.
+  function renderMonthSmall() {
+    const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+    const start = mondayOf(first);
+    if (!selectedDay.startsWith(key(first).slice(0, 7))) {
+      const firstActive = [...byDay.keys()].sort().find((k) => k.startsWith(key(first).slice(0, 7)) && byDay.get(k)!.some((e) => e.t === 'seance'));
+      selectedDay = firstActive ?? key(first);
+    }
+    let html = '<div class="mgrid">' + JOURS.map((j) => `<div class="dow">${j[0].toUpperCase()}</div>`).join('');
+    for (let i = 0; i < 42; i++) {
+      const d = addDays(start, i);
+      if (i >= 35 && d.getMonth() !== cursor.getMonth()) break;
+      const evs = byDay.get(key(d)) ?? [];
+      const ns = evs.filter((e) => e.t === 'seance').length;
+      const nc = evs.length - ns;
+      const vote = evs.some((e) => e.v > 0);
+      const out = d.getMonth() !== cursor.getMonth() ? ' out' : '';
+      const sel = key(d) === selectedDay ? ' sel' : '';
+      const isToday = key(d) === key(today) ? ' today' : '';
+      html += `<button type="button" class="mc${out}${sel}${isToday}" data-pick="${key(d)}"><span>${d.getDate()}</span><i class="pips">${'<b class="ps"></b>'.repeat(Math.min(ns, 3))}${nc ? '<b class="pc"></b>' : ''}</i>${vote ? '<em class="pv"></em>' : ''}</button>`;
+    }
+    cal.innerHTML = html + '</div>' + dayList(selectedDay);
+    label.textContent = `${MOIS[cursor.getMonth()].replace(/^./, (c) => c.toUpperCase())} ${cursor.getFullYear()}`;
+  }
+
+  // Mobile : planning de la semaine, jour par jour.
+  function renderWeekSmall() {
+    const start = mondayOf(cursor);
+    let html = '';
+    for (let i = 0; i < 7; i++) {
+      const k = key(addDays(start, i));
+      if ((byDay.get(k) ?? []).length) html += dayList(k);
+    }
+    cal.innerHTML = html || '<p class="muted">Aucune séance ni réunion cette semaine.</p>';
+    const end = addDays(start, 6);
+    label.textContent = `Semaine du ${start.getDate()} ${MOIS[start.getMonth()]} au ${end.getDate()} ${MOIS[end.getMonth()]}`;
   }
 
   function renderMonth() {
@@ -238,7 +286,7 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
 
   function render() {
     detail.hidden = true;
-    if (mode === 'mois') renderMonth(); else if (mode === 'semaine') renderWeek(); else renderYear();
+    if (mode === 'mois') (small() ? renderMonthSmall : renderMonth)(); else if (mode === 'semaine') (small() ? renderWeekSmall : renderWeek)(); else renderYear();
     const [a, b] = range();
     renderKpis(a, b);
     renderTravail(a, b);
@@ -260,8 +308,9 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
 
   cal.addEventListener('click', (ev) => {
     const t = ev.target as HTMLElement;
-    const btn = t.closest<HTMLElement>('[data-i],[data-day],[data-month]');
+    const btn = t.closest<HTMLElement>('[data-i],[data-day],[data-month],[data-pick]');
     if (!btn) return;
+    if (btn.dataset.pick) { selectedDay = btn.dataset.pick; renderMonthSmall(); return; }
     if (btn.dataset.i) openEvent(Number(btn.dataset.i));
     else if (btn.dataset.day) { const [y, m, d] = btn.dataset.day.split('-').map(Number); cursor = new Date(y, m - 1, d); mode = 'semaine'; render(); }
     else if (btn.dataset.month) { cursor = new Date(cursor.getFullYear(), Number(btn.dataset.month), 1); mode = 'mois'; render(); }
@@ -358,6 +407,19 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
   .cal :global(.blk) { position: absolute; overflow: hidden; text-align: left; font-size: 0.72rem; line-height: 1.2; padding: 3px 4px; border-radius: 4px; border: 1px solid var(--bg); }
   .cal :global(.blk.c-com) { border: 1px solid color-mix(in srgb, var(--ramp-to) 40%, var(--bg)); }
 
+  .cal :global(.mgrid) { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .cal :global(.mgrid .dow) { text-align: center; font-size: 0.72rem; color: var(--ink-62); padding: 4px 0; border: 0; }
+  .cal :global(.mc) { position: relative; display: grid; justify-items: center; gap: 3px; padding: 6px 0 8px; border: 0; background: none; border-radius: 10px; font-variant-numeric: tabular-nums; }
+  .cal :global(.mc.out) { opacity: 0.35; }
+  .cal :global(.mc.sel) { background: var(--ink); color: var(--bg); }
+  .cal :global(.mc.today span) { text-decoration: underline; text-underline-offset: 3px; }
+  .cal :global(.pips) { display: flex; gap: 2px; height: 5px; }
+  .cal :global(.ps) { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+  .cal :global(.pc) { width: 5px; height: 5px; border-radius: 50%; background: var(--ramp-to); }
+  .cal :global(.pv) { position: absolute; top: 5px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--vote-pour); }
+  .cal :global(.dl) { display: grid; gap: 6px; margin-top: 16px; }
+  .cal :global(.dl h3) { font-size: 1.1rem; }
+  .cal :global(.dl .chip) { font-size: 0.88rem; padding: 8px 10px; }
   .cal :global(.year) { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 20px; }
   .cal :global(.ymt) { background: none; border: 0; font-weight: 600; text-transform: capitalize; padding: 0 0 6px; }
   .cal :global(.ygrid) { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
