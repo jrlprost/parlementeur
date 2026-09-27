@@ -1,0 +1,72 @@
+---
+import Base from '../layouts/Base.astro';
+import { load, fmtDate, fmtInt } from '../lib/data';
+
+const { meta } = load();
+const sources = Object.values(meta.sources);
+---
+<Base title="Méthode et sources" description="D'où viennent les chiffres de Parlementeur, comment ils sont calculés, et ce que nous ne publions pas." section="methode">
+  <article class="doc stack" style="--gap:40px">
+    <header class="stack" style="--gap:12px">
+      <p class="kicker">Méthode</p>
+      <h1>D'où viennent les chiffres</h1>
+      <p class="lede">Parlementeur ne produit aucune donnée : il rassemble des données publiques officielles, les recoupe et les rend lisibles. Chaque chiffre renvoie à sa source. Dernière mise à jour : {fmtDate(meta.generatedAt)}.</p>
+    </header>
+
+    <section class="stack">
+      <h2>Les sources</h2>
+      <ul class="plain">
+        {sources.map((s) => (
+          <li><a href={s.url}>{s.label}</a>{s.records != null && <span class="muted"> · {fmtInt(s.records)} enregistrements</span>}</li>
+        ))}
+      </ul>
+      <p>Les données sont récupérées automatiquement chaque nuit, et toutes les heures les jours de séance. Elles sont publiées sous licence ouverte par leurs producteurs (Licence Ouverte Etalab pour l'Assemblée nationale et la HATVP, CC0 pour Wikidata).</p>
+    </section>
+
+    <section class="stack" id="indicateurs">
+      <h2>Les indicateurs</h2>
+      <dl class="defs">
+        <dt>Présence aux votes</dt>
+        <dd>Part des scrutins publics auxquels le député a voté (pour, contre ou abstention), parmi ceux qui ont eu lieu depuis sa prise de fonction. Les scrutins où il était officiellement « non votant » (présidence de séance, membre du gouvernement) sont retirés du calcul. La présidente de l'Assemblée, qui ne prend pas part aux votes, n'a pas de taux. Ce chiffre ne mesure pas le travail en commission ni en circonscription : il mesure uniquement la participation aux votes publics en séance.</dd>
+        <dt>Votes solennels</dt>
+        <dd>Même calcul, limité aux votes solennels : le vote sur l'ensemble d'un texte, annoncé à l'avance par la conférence des présidents.</dd>
+        <dt>Discipline de groupe</dt>
+        <dd>Part des votes du député identiques à la position majoritaire de son groupe au moment du vote, telle que publiée par l'Assemblée. Calculée seulement pour les députés ayant au moins 20 votes comparables.</dd>
+        <dt>Ancienneté</dt>
+        <dd>Nombre de législatures de la Ve République auxquelles le député a siégé, d'après l'Assemblée nationale (depuis 2012) et Wikidata (avant 2012). La législature en cours compte.</dd>
+        <dt>Revenus annexes</dt>
+        <dd>Somme des rémunérations déclarées à la HATVP, pour l'année la plus récente renseignée, au titre des activités professionnelles conservées pendant le mandat, des activités de conseil, des fonctions de direction et des autres mandats électifs. L'indemnité de député n'est pas comptée. Les montants sont ceux déclarés par l'élu, sans correction.</dd>
+      </dl>
+    </section>
+
+    <section class="stack" id="patrimoine">
+      <h2>Pourquoi le patrimoine des députés n'apparaît pas</h2>
+      <p>Les députés déclarent leur patrimoine à la Haute Autorité pour la transparence de la vie publique. Mais la loi interdit de le rendre public : ces déclarations peuvent seulement être consultées en préfecture par les électeurs, et l'article LO 135-2 du code électoral punit d'un an de prison et de 45 000 € d'amende le fait d'en publier « tout ou partie ». Parlementeur ne lit donc jamais ces déclarations.</p>
+      <p>Nous publions à la place ce que la loi rend public : les déclarations d'intérêts et d'activités (revenus d'activités, participations au capital de sociétés, fonctions de direction, activité du conjoint). Les déclarations de patrimoine des membres du gouvernement, elles, sont publiques et seront intégrées avec la rubrique Gouvernement.</p>
+    </section>
+
+    <section class="stack" id="condamnations">
+      <h2>Condamnations : notre règle</h2>
+      <p>Il n'existe pas de base publique des condamnations d'élus : le casier judiciaire n'est pas public. Parlementeur ne publie que des condamnations <strong>définitives</strong> (tous recours épuisés), chacune documentée par une source primaire ou une dépêche d'agence citant la décision, avec sa date et sa juridiction. Les mises en examen et les procédures en cours ne sont pas publiées : toute personne est présumée innocente tant qu'elle n'a pas été définitivement condamnée. Une condamnation amnistiée, réhabilitée ou effacée est retirée.</p>
+      <p>Une erreur ou un oubli ? Signalez-le avec la source sur le <a href="https://github.com/jrlprost/parlementeur/issues">dépôt du projet</a>.</p>
+    </section>
+
+    <section class="stack" id="limites">
+      <h2>Limites connues</h2>
+      <ul class="plain">
+        <li>Les votes à main levée ne sont pas nominatifs : seuls les scrutins publics permettent de savoir qui a voté quoi.</li>
+        <li>Les déclarations d'intérêts sont rapprochées des députés par nom, prénom et date de naissance. Un député sans déclaration rapprochée apparaît « sans donnée », ce qui ne signifie pas qu'il n'a rien déclaré.</li>
+        <li>Le répertoire des représentants d'intérêts (lobbying) ne nomme pas les élus rencontrés, seulement leur fonction : il ne permet pas d'attribuer une rencontre à un député précis.</li>
+      </ul>
+    </section>
+  </article>
+</Base>
+
+<style>
+  .doc { max-width: 760px; }
+  .doc h2 { font-size: var(--step-2); }
+  .plain { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .defs { margin: 0; display: grid; gap: 6px; }
+  .defs dt { font-weight: 700; margin-top: 12px; }
+  .defs dd { margin: 0; color: var(--ink-80); }
+</style>

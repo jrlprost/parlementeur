@@ -1,0 +1,121 @@
+---
+import Base from '../layouts/Base.astro';
+import { load, fmtInt } from '../lib/data';
+import { SITE } from '../lib/site';
+
+type Meta = ReturnType<typeof load>['meta'] & {
+  dureeSecondes: number;
+  etapes: { etape: string; secondes: number }[];
+  controles: { controle: string; ok: boolean; valeur: number }[];
+  volumes: { deputes: number; scrutins: number; votes: number; declarations: number };
+};
+const meta = load().meta as Meta;
+const maxStep = Math.max(...meta.etapes.map((e) => e.secondes), 0.01);
+const dt = (iso?: string) =>
+  iso ? new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }) : '–';
+const mo = (b?: number) => (b ? `${(b / 1e6).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Mo` : '–');
+const sources = Object.values(meta.sources) as (typeof meta.sources)[string] & { bytes?: number; fetchedAt?: string; lastModified?: string }[];
+---
+<Base title="Coulisses du pipeline" description="Comment Parlementeur collecte, vérifie et publie les données publiques : sources, étapes, volumes et contrôles, mis à jour à chaque exécution." section="methode">
+  <article class="stack" style="--gap:44px">
+    <header class="stack" style="--gap:12px">
+      <p class="kicker">Coulisses · dernière exécution le {dt(meta.generatedAt)}</p>
+      <h1>{fmtInt(meta.volumes.votes)} votes analysés en {meta.dureeSecondes.toLocaleString('fr-FR')} secondes</h1>
+      <p class="lede">Chaque nuit, et toutes les heures les jours de séance, un programme télécharge les données officielles, les recoupe, vérifie leur cohérence et reconstruit le site. Cette page est produite par ce même programme : elle montre l'état réel de la dernière exécution.</p>
+    </header>
+
+    <section class="stack" style="--gap:16px">
+      <h2>Le chemin d'une donnée</h2>
+      <ol class="flow">
+        <li><b>Collecte</b><span>Archives officielles de l'Assemblée nationale, de la HATVP et de Wikidata, téléchargées telles quelles.</span></li>
+        <li><b>Normalisation</b><span>Lecture des fichiers JSON et XML, harmonisation des identifiants, des dates et des montants.</span></li>
+        <li><b>Recoupement</b><span>Chaque député est relié à ses votes, à ses déclarations et à ses mandats passés, par identifiant ou par nom et date de naissance.</span></li>
+        <li><b>Calcul</b><span>Présence, discipline de groupe et ancienneté sont calculées en SQL (DuckDB) sur l'ensemble des votes nominatifs.</span></li>
+        <li><b>Contrôles</b><span>Des vérifications automatiques bloquent la publication si un chiffre sort des bornes attendues.</span></li>
+        <li><b>Publication</b><span>Génération des {fmtInt(meta.volumes.scrutins + meta.volumes.deputes)} pages et des images de partage, puis mise en ligne sur Cloudflare.</span></li>
+      </ol>
+    </section>
+
+    <section class="stack" style="--gap:16px">
+      <h2>Volumes</h2>
+      <div class="kpis">
+        <div><b class="num">{fmtInt(meta.volumes.deputes)}</b><span>députés</span></div>
+        <div><b class="num">{fmtInt(meta.volumes.scrutins)}</b><span>scrutins publics</span></div>
+        <div><b class="num">{fmtInt(meta.volumes.votes)}</b><span>votes nominatifs</span></div>
+        <div><b class="num">{fmtInt(meta.volumes.declarations)}</b><span>déclarations d'intérêts rapprochées</span></div>
+      </div>
+    </section>
+
+    <section class="stack" style="--gap:16px">
+      <h2>Sources et fraîcheur</h2>
+      <div class="scroll">
+        <table class="tbl">
+          <thead><tr><th>Source</th><th class="r">Enregistrements</th><th class="r">Taille</th><th class="r">Récupérée le</th></tr></thead>
+          <tbody>
+            {sources.map((s) => (
+              <tr>
+                <td><a href={s.url}>{s.label}</a>{s.lastModified && <span class="muted small block">Publiée par la source : {dt(s.lastModified)}</span>}</td>
+                <td class="r num">{s.records != null ? fmtInt(s.records) : '–'}</td>
+                <td class="r num">{mo(s.bytes)}</td>
+                <td class="r num">{dt(s.fetchedAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="stack" style="--gap:16px">
+      <h2>Temps de chaque étape</h2>
+      <div class="steps">
+        {meta.etapes.map((e) => (
+          <div class="step">
+            <span>{e.etape}</span>
+            <div class="track"><div class="fill" style={`width:${Math.max(2, (e.secondes / maxStep) * 100)}%`}></div></div>
+            <span class="num r">{e.secondes.toLocaleString('fr-FR')} s</span>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="stack" style="--gap:16px">
+      <h2>Contrôles automatiques</h2>
+      <ul class="checks">
+        {meta.controles.map((c) => (
+          <li class={c.ok ? 'ok' : 'ko'}><span class="mark" aria-hidden="true">{c.ok ? '✓' : '✗'}</span>{c.controle}<span class="muted num"> · {fmtInt(c.valeur)}</span></li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="stack" style="--gap:12px">
+      <h2>Tout est ouvert</h2>
+      <p>Le code du pipeline et du site est public, comme les jeux de données produits. Vous pouvez tout vérifier, tout réutiliser : <a href={SITE.repo}>{SITE.repo.replace('https://', '')}</a>.</p>
+    </section>
+  </article>
+</Base>
+
+<style>
+  .flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; counter-reset: f; }
+  .flow li { border-top: 2px solid var(--ink); padding-top: 10px; display: grid; gap: 4px; counter-increment: f; }
+  .flow b::before { content: counter(f) '. '; color: var(--ink-62); }
+  .flow span { font-size: 0.9rem; color: var(--ink-80); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+  .kpis div { border-top: 1px solid var(--ink-16); padding-top: 8px; display: grid; }
+  .kpis b { font-family: var(--serif); font-size: 2rem; font-weight: 600; }
+  .kpis span { font-size: 0.85rem; color: var(--ink-62); }
+  .scroll { overflow-x: auto; }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 0.92rem; min-width: 560px; }
+  .tbl th { text-align: left; font-size: 0.8rem; color: var(--ink-62); border-bottom: 1px solid var(--ink-16); padding: 6px 0; font-weight: 600; }
+  .tbl td { border-bottom: 1px solid var(--ink-8); padding: 8px 0; vertical-align: top; }
+  .tbl .r, .r { text-align: right; padding-left: 12px; white-space: nowrap; }
+  .block { display: block; }
+  .steps { display: grid; gap: 8px; font-size: 0.9rem; }
+  .step { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 64px; gap: 12px; align-items: center; }
+  .track { height: 10px; background: var(--ink-8); border-radius: 2px; overflow: hidden; }
+  .fill { height: 100%; background: var(--ramp-to); }
+  @media (max-width: 600px) { .step { grid-template-columns: 1fr 56px; } .step .track { grid-column: 1 / -1; grid-row: 2; } }
+  .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .checks .mark { display: inline-block; width: 1.4em; font-weight: 700; }
+  .checks .ok .mark { color: var(--vote-pour); }
+  .checks .ko .mark { color: var(--vote-contre); }
+</style>
