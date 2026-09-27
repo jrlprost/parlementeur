@@ -237,6 +237,7 @@ def load_scrutins():
                 "abstention": int(dec.get("abstentions") or 0),
                 "votants": int(s["syntheseVote"].get("nombreVotants") or 0),
                 "demandeur": val((s.get("demandeur") or {}).get("texte")),
+                "seanceRef": val(s.get("seanceRef")),
                 "url": f"https://www.assemblee-nationale.fr/dyn/{LEGISLATURE}/scrutins/{s['numero']}",
                 "votes": votes,
                 "voterGroup": voter_group,
@@ -309,3 +310,15 @@ def load_all_groups() -> dict[str, dict]:
             if o.get("codeType") == "GP" and (str(o.get("legislature")) == str(LEGISLATURE) or debut >= "2024-07-01"):
                 out[o["uid"]] = {"sigle": DISPLAY_SIGLE.get(o["libelleAbrev"], o["libelleAbrev"]), "nom": o["libelle"]}
     return out
+
+
+def load_organe_names() -> dict[str, str]:
+    """Nom de tous les organes (commissions, délégations, groupes d'études…) cités dans l'agenda."""
+    names = {}
+    for path, prefix in ((fetch(AMO50, f"an{LEGISLATURE}_amo50.json.zip"), "organe/"), (fetch(AMO10, f"an{LEGISLATURE}_amo10.json.zip"), "json/organe/")):
+        with zipfile.ZipFile(path) as z:
+            for n in z.namelist():
+                if n.startswith(prefix) and n.endswith(".json"):
+                    o = json.loads(z.read(n))["organe"]
+                    names[o["uid"]] = o.get("libelle") or o.get("libelleAbrege") or ""
+    return names

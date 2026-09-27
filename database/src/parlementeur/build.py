@@ -8,7 +8,7 @@ import shutil
 import duckdb
 import httpx
 
-from . import an, elections, hatvp, lobbying, wikidata
+from . import agenda, an, elections, hatvp, lobbying, wikidata
 import time
 from contextlib import contextmanager
 
@@ -124,6 +124,8 @@ def main() -> None:
         history, gp_hist = an.load_mandate_history(ids)
     with step("Scrutins et votes nominatifs (Assemblée nationale)"):
         scrutins = an.load_scrutins()
+    with step("Agenda : séances et réunions de commission (Assemblée nationale)"):
+        events, presence, monthly = agenda.load(an.load_organe_names(), scrutins, ids)
     with step("Présence et discipline de vote (DuckDB)"):
         metrics = vote_metrics(deputes, scrutins)
     with step("Amendements (Assemblée nationale)"):
@@ -207,6 +209,8 @@ def main() -> None:
             "loyaute": m.get("loyaute"),
             "votes": m.get("votes"),
             "scrutinsPossibles": m.get("eligibles"),
+            "commissions": presence.get(d["id"]),
+            "joursVote": len({sc["date"] for sc in scrutins if d["id"] in sc["votes"] and sc["votes"][d["id"]] != "n"}),
             "amendements": amdts.get(d["id"], {}).get("deposes", 0),
             "amendementsAdoptes": amdts.get(d["id"], {}).get("adoptes", 0),
             "questions": questions.get(d["id"], {}).get("posees", 0),
@@ -281,6 +285,27 @@ def main() -> None:
         )
     write_json(DIST / "scrutins.json", index)
     write_json(DIST / "lobbying.json", lobby)
+    write_json(DIST / "agenda.json", events)
+    # Travail par député et par mois : commissions (convocations, présences, minutes) et jours de vote en séance.
+    vote_days: dict[str, dict[str, set]] = {}
+    for sc in scrutins:
+        mo = sc["date"][:7]
+        for a, c in sc["votes"].items():
+            if c != "n":
+                vote_days.setdefault(a, {}).setdefault(mo, set()).add(sc["date"])
+    months = sorted({m for v in monthly.values() for m in v} | {m for v in vote_days.values() for m in v})
+    write_json(
+        DIST / "travail.json",
+        {
+            "mois": months,
+            "deputes": {
+                d["slug"]: [
+                    [*monthly[d["id"]].get(m, [0, 0, 0]), len(vote_days.get(d["id"], {}).get(m, ()))] for m in months
+                ]
+                for d in deputes
+            },
+        },
+    )
     shutil.copyfile(ROOT / "curated" / "sieges.json", DIST / "sieges.json")
     # Données constituées à la main, chacune avec ses sources : historique et condamnations.
     for name in ("legislatures.json",):
@@ -309,6 +334,7 @@ def main() -> None:
                 "scrutins": {"label": "Assemblée nationale, scrutins publics", "url": an.SCRUTINS, "records": len(scrutins), **fetch_info(f"an{an.LEGISLATURE}_scrutins.json.zip")},
                 "amendements": {"label": "Assemblée nationale, amendements", "url": an.AMENDEMENTS, "records": n_amdts, **fetch_info(f"an{an.LEGISLATURE}_amendements.json.zip")},
                 "questions": {"label": "Assemblée nationale, questions écrites", "url": an.QUESTIONS, "records": n_questions, **fetch_info(f"an{an.LEGISLATURE}_questions.json.zip")},
+                "agenda": {"label": "Assemblée nationale, agenda des séances et réunions", "url": agenda.AGENDA, "records": len(events), **fetch_info("an17_agenda.json.zip")},
                 "hatvp": {"label": "HATVP, déclarations d'intérêts et d'activités", "url": hatvp.DECLARATIONS, "records": len(decl), **fetch_info("hatvp_declarations.xml")},
                 "agora": {"label": "HATVP, répertoire des représentants d'intérêts", "url": lobbying.AGORA, "records": lobby["organisations"], **fetch_info("hatvp_agora.json")},
                 "wikidata": {"label": "Wikidata, mandats de député antérieurs", "url": "https://query.wikidata.org/", "records": len(wd)},
