@@ -1,0 +1,111 @@
+---
+import Base from '../../layouts/Base.astro';
+import HemicycleVotes from '../../components/HemicycleVotes.astro';
+import { load, readOptional, fmtDate, fmtInt, type Scrutin, type ScrutinIndex } from '../../lib/data';
+import { seatVotes, seatCodes, VOTE_LABEL } from '../../lib/scrutin';
+
+export function getStaticPaths() {
+  const idx = readOptional<ScrutinIndex[]>('scrutins.json') ?? [];
+  return idx.map((s) => ({ params: { numero: String(s.numero) } }));
+}
+
+const { deputes, groupes } = load();
+const s = readOptional<Scrutin>(`scrutins/${Astro.params.numero}.json`)!;
+const codes = seatVotes(s, deputes);
+const gname = new Map(groupes.map((g) => [g.sigle, g.nom]));
+const gcol = new Map(groupes.map((g) => [g.sigle, g.couleur]));
+const gorder = new Map(groupes.map((g, i) => [g.sigle, i]));
+const sgroupes = [...s.groupes].sort((a, b) => (gorder.get(a.sigle) ?? 99) - (gorder.get(b.sigle) ?? 99));
+const absents = codes.filter((c) => c === 'absent').length;
+
+// Députés qui ont voté autrement que la position de leur groupe.
+const rebels = deputes
+  .map((d, i) => ({ d, c: codes[i] }))
+  .filter(({ d, c }) => {
+    const pos = s.groupes.find((g) => g.sigle === d.groupe)?.position;
+    return pos && ['pour', 'contre', 'abstention'].includes(c) && pos !== c && ['pour', 'contre', 'abstention'].includes(pos);
+  });
+const verdict = s.adopte ? 'Adopté' : 'Rejeté';
+const description = `${verdict} par ${fmtInt(s.pour)} voix pour et ${fmtInt(s.contre)} contre. Le vote de chaque député et de chaque groupe, avec la source officielle.`;
+---
+<Base title={s.titre} description={description} og={s.solennel || s.motion ? `/og/scrutin-${s.numero}.png` : '/og/vue-groupes.png'} section="scrutins">
+  <article class="stack" style="--gap:32px">
+    <header class="stack" style="--gap:12px">
+      <p class="kicker">Scrutin n° {s.numero} · {fmtDate(s.date)}{s.solennel ? ' · vote solennel' : ''}</p>
+      <h1 class="stitle">{s.titre}</h1>
+      <p class={`verdict ${s.adopte ? 'ok' : 'ko'}`}>{verdict}</p>
+    </header>
+
+    <section class="counts">
+      <div><b class="num" style="color:var(--vote-pour)">{fmtInt(s.pour)}</b><span>pour</span></div>
+      <div><b class="num" style="color:var(--vote-contre)">{fmtInt(s.contre)}</b><span>contre</span></div>
+      <div><b class="num" style="color:var(--vote-abstention)">{fmtInt(s.abstention)}</b><span>abstentions</span></div>
+      <div><b class="num muted">{fmtInt(absents)}</b><span>députés actuels n'ont pas voté</span></div>
+    </section>
+
+    <section class="stack" style="--gap:10px">
+      <HemicycleVotes codes={seatCodes(s, deputes)} label={`Vote de chaque député sur le scrutin ${s.numero} : ${s.pour} pour, ${s.contre} contre, ${s.abstention} abstentions`} />
+      <ul class="lg">
+        <li><i style="background:var(--vote-pour)"></i>Pour</li>
+        <li><i style="background:var(--vote-contre)"></i>Contre</li>
+        <li><i style="background:var(--vote-abstention)"></i>Abstention</li>
+        <li><i style="background:var(--ink-16)"></i>Présent, n'a pas voté</li>
+        <li><i style="background:var(--ink-4);outline:1px solid var(--ink-16)"></i>Absent ou pas encore élu</li>
+      </ul>
+      <p class="src">Hémicycle actuel : un député élu après ce scrutin apparaît comme absent. Source : <a href={s.url}>analyse du scrutin sur le site de l'Assemblée nationale</a>.</p>
+    </section>
+
+    <section class="stack" style="--gap:12px">
+      <h2>Vote par groupe</h2>
+      <div class="gbars">
+        {sgroupes.map((g) => {
+          const tot = Math.max(1, g.pour + g.contre + g.abstention + g.nonVotants);
+          return (
+            <div class="gb">
+              <span class="gl"><i style={`background:${gcol.get(g.sigle) ?? '#9A9A9A'}`}></i><abbr title={gname.get(g.sigle) ?? g.sigle}>{g.sigle}</abbr></span>
+              <div class="bar" role="img" aria-label={`${g.sigle} : ${g.pour} pour, ${g.contre} contre, ${g.abstention} abstentions`}>
+                <span style={`width:${(g.pour / tot) * 100}%;background:var(--vote-pour)`}></span>
+                <span style={`width:${(g.contre / tot) * 100}%;background:var(--vote-contre)`}></span>
+                <span style={`width:${(g.abstention / tot) * 100}%;background:var(--vote-abstention)`}></span>
+              </div>
+              <span class="num small muted">{g.pour} · {g.contre} · {g.abstention}</span>
+            </div>
+          );
+        })}
+      </div>
+      <p class="src">Pour · contre · abstention. La barre est proportionnelle aux votes exprimés dans le groupe.</p>
+    </section>
+
+    {rebels.length > 0 && (
+      <section class="stack" style="--gap:12px">
+        <h2>Ils ont voté contre la position de leur groupe</h2>
+        <ul class="rebels">
+          {rebels.map(({ d, c }) => (
+            <li><a href={`/deputes/${d.slug}/`}>{d.prenom} {d.nom}</a> <span class="muted small">({d.groupe}) a voté {VOTE_LABEL[c].toLowerCase()}</span></li>
+          ))}
+        </ul>
+      </section>
+    )}
+  </article>
+</Base>
+
+<style>
+  .stitle { font-size: var(--step-3); }
+  .verdict { font-weight: 700; font-size: 1.1rem; }
+  .verdict.ok { color: var(--vote-pour); }
+  .verdict.ko { color: var(--vote-contre); }
+  .counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 16px; }
+  .counts div { border-top: 2px solid var(--ink); padding-top: 8px; display: grid; }
+  .counts b { font-family: var(--serif); font-size: 2.2rem; font-weight: 600; line-height: 1.1; }
+  .counts span { font-size: 0.85rem; color: var(--ink-62); }
+  .lg { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.85rem; }
+  .lg li { display: inline-flex; gap: 6px; align-items: center; }
+  .lg i, .gl i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .gbars { display: grid; gap: 8px; }
+  .gb { display: grid; grid-template-columns: 80px 1fr auto; gap: 12px; align-items: center; }
+  .gl { display: inline-flex; gap: 6px; align-items: center; font-size: 0.9rem; }
+  .gl abbr { text-decoration: none; }
+  .bar { display: flex; height: 14px; background: var(--ink-8); border-radius: 2px; overflow: hidden; }
+  .rebels { list-style: none; padding: 0; margin: 0; columns: 2 280px; gap: 24px; }
+  .rebels li { break-inside: avoid; padding-block: 3px; }
+</style>

@@ -1,0 +1,10 @@
+---
+import AssemblyPage from '../../components/AssemblyPage.astro';
+import { VIEWS } from '../../lib/views';
+
+export function getStaticPaths() {
+  return VIEWS.filter((v) => v.id !== 'groupes').map((v) => ({ params: { id: v.id } }));
+}
+const { id } = Astro.params;
+---
+<AssemblyPage view={id!} />

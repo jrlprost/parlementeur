@@ -1,0 +1,115 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link "Parlementeur" [ref=e3] [cursor=pointer]:
+      - /url: /
+    - navigation "Principale" [ref=e4]:
+      - link "Assemblée" [ref=e5] [cursor=pointer]:
+        - /url: /
+      - link "Scrutins" [ref=e6] [cursor=pointer]:
+        - /url: /scrutins/
+      - link "Députés" [ref=e7] [cursor=pointer]:
+        - /url: /deputes/
+      - link "Depuis 1958" [ref=e8] [cursor=pointer]:
+        - /url: /histoire/
+      - link "Méthode" [ref=e9] [cursor=pointer]:
+        - /url: /methode/
+    - button "Changer de thème" [ref=e10] [cursor=pointer]:
+      - img [ref=e11]
+  - main [ref=e14]:
+    - generic [ref=e15]:
+      - paragraph [ref=e16]:
+        - text: Assemblée nationale · 17
+        - superscript [ref=e17]: e
+        - text: législature · données au 27 septembre 2026
+      - heading "Qui siège dans l'hémicycle" [level=1] [ref=e18]
+      - paragraph [ref=e19]: Chaque point est un député, placé dans son groupe politique, de la gauche à la droite.
+      - generic [ref=e20]:
+        - toolbar "Thématique" [ref=e21]:
+          - generic [ref=e22]:
+            - link "Groupes" [ref=e23] [cursor=pointer]:
+              - /url: /
+            - link "Âge" [ref=e24] [cursor=pointer]:
+              - /url: /vue/age/
+            - link "Femmes" [ref=e25] [cursor=pointer]:
+              - /url: /vue/femmes/
+            - link "Présence aux votes" [ref=e26] [cursor=pointer]:
+              - /url: /vue/participation/
+            - link "Votes solennels" [ref=e27] [cursor=pointer]:
+              - /url: /vue/solennels/
+            - link "Discipline" [ref=e28] [cursor=pointer]:
+              - /url: /vue/loyaute/
+            - link "Ancienneté" [ref=e29] [cursor=pointer]:
+              - /url: /vue/anciennete/
+            - link "Revenus annexes" [ref=e30] [cursor=pointer]:
+              - /url: /vue/revenus/
+        - figure "GDR 17 LFI-NFP 71 EcoS 38 SOC 67 LIOT 23 EPR 90 Dem 37 HOR 36 DR 48 UDR 17 RN 122 NI 11" [ref=e32]:
+          - 'img "Hémicycle de 577 sièges : Qui siège dans l''hémicycle" [ref=e33]':
+            - generic [ref=e611]: "577"
+            - generic [ref=e612]: députés
+          - list [ref=e614]:
+            - listitem "Gauche Démocrate et Républicaine" [ref=e615]:
+              - text: GDR
+              - generic [ref=e617]: "17"
+            - listitem "La France insoumise - Nouveau Front Populaire" [ref=e618]:
+              - text: LFI-NFP
+              - generic [ref=e620]: "71"
+            - listitem "Écologiste et Social" [ref=e621]:
+              - text: EcoS
+              - generic [ref=e623]: "38"
+            - listitem "Socialistes et apparentés" [ref=e624]:
+              - text: SOC
+              - generic [ref=e626]: "67"
+            - listitem "Libertés, Indépendants, Outre-mer et Territoires" [ref=e627]:
+              - text: LIOT
+              - generic [ref=e629]: "23"
+            - listitem "Ensemble pour la République" [ref=e630]:
+              - text: EPR
+              - generic [ref=e632]: "90"
+            - listitem "Les Démocrates" [ref=e633]:
+              - text: Dem
+              - generic [ref=e635]: "37"
+            - listitem "Horizons & Indépendants" [ref=e636]:
+              - text: HOR
+              - generic [ref=e638]: "36"
+            - listitem "Droite Républicaine" [ref=e639]:
+              - text: DR
+              - generic [ref=e641]: "48"
+            - listitem "Union des droites pour la République" [ref=e642]:
+              - text: UDR
+              - generic [ref=e644]: "17"
+            - listitem "Rassemblement National" [ref=e645]:
+              - text: RN
+              - generic [ref=e647]: "122"
+            - listitem "Non-inscrits" [ref=e648]:
+              - text: NI
+              - generic [ref=e650]: "11"
+        - generic [ref=e651]:
+          - generic [ref=e652]: Trouver un député par nom ou département
+          - combobox "Trouver un député par nom ou département" [ref=e653]
+      - paragraph [ref=e654]:
+        - text: "Source :"
+        - link "Assemblée nationale, open data" [ref=e655] [cursor=pointer]:
+          - /url: https://data.assemblee-nationale.fr/
+        - text: . Cliquez sur un siège pour ouvrir la fiche du député.
+        - link "Comment ces chiffres sont calculés" [ref=e656] [cursor=pointer]:
+          - /url: /methode/
+        - text: .
+  - contentinfo [ref=e657]:
+    - separator [ref=e658]
+    - generic [ref=e659]:
+      - paragraph [ref=e660]:
+        - text: Parlementeur est conçu et développé par
+        - link "Jean-Rémi Larcelet-Prost" [ref=e661] [cursor=pointer]:
+          - /url: https://github.com/jrlprost
+        - text: .
+      - paragraph [ref=e662]:
+        - text: Données publiques officielles, chaque chiffre renvoie à sa source. Aucun cookie, aucun traceur, aucune mesure d'audience. Code et données
+        - link "ouverts" [ref=e663] [cursor=pointer]:
+          - /url: https://github.com/jrlprost/parlementeur
+        - text: .
+        - link "Méthode et sources" [ref=e664] [cursor=pointer]:
+          - /url: /methode/
+        - text: ·
+        - link "Coulisses du pipeline" [ref=e665] [cursor=pointer]:
+          - /url: /coulisses/
+        - text: .

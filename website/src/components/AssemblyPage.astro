@@ -1,0 +1,21 @@
+---
+import Base from '../layouts/Base.astro';
+import Hemicycle from './Hemicycle.astro';
+import { load, fmtDate } from '../lib/data';
+import { viewById } from '../lib/views';
+
+interface Props { view: string }
+const { view } = Astro.props;
+const { deputes, groupes, meta } = load();
+const v = viewById(view);
+const og = `/og/vue-${v.id}.png`;
+---
+<Base title={view === 'groupes' ? undefined : v.titre} description={v.intro} og={og} section="assemblee">
+  <div class="stack" style="--gap:20px">
+    <p class="kicker">Assemblée nationale · {meta.legislature}<sup>e</sup> législature · données au {fmtDate(meta.generatedAt)}</p>
+    <h1 data-view-title>{v.titre}</h1>
+    <p class="lede" data-view-intro>{v.intro}</p>
+    <Hemicycle deputes={deputes} groupes={groupes} view={v.id} />
+    <p class="src">Source : <a href={v.source.url}>{v.source.label}</a>. Cliquez sur un siège pour ouvrir la fiche du député. <a href="/methode/">Comment ces chiffres sont calculés</a>.</p>
+  </div>
+</Base>

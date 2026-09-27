@@ -1,0 +1,38 @@
+---
+// Hémicycle sans interaction, pour les scrutins et les fiches. Un clic sur un siège mène à la fiche du député.
+import { layoutHemicycle } from '../lib/hemicycle';
+
+interface Props {
+  fills: string[];
+  titles?: string[];
+  links?: string[];
+  highlight?: number;
+  label: string;
+  center?: string;
+  sub?: string;
+}
+const { fills, titles, links, highlight, label, center, sub } = Astro.props;
+const L = layoutHemicycle(fills.length);
+const order = [...L.seats.keys()];
+if (highlight != null) order.push(order.splice(highlight, 1)[0]);
+---
+<svg class="hemi-static" viewBox={`0 0 ${L.width.toFixed(0)} ${L.height.toFixed(0)}`} role="img" aria-label={label}>
+  {order.map((i) => {
+    const s = L.seats[i];
+    const c = (
+      <circle cx={s.x.toFixed(1)} cy={s.y.toFixed(1)} r={(L.dot * (i === highlight ? 1.9 : 1)).toFixed(2)} style={`fill:${fills[i]}`} class={i === highlight ? 'hl' : undefined}>
+        {titles && <title>{titles[i]}</title>}
+      </circle>
+    );
+    return links ? <a href={links[i]}>{c}</a> : c;
+  })}
+  {center && <text x={L.cx} y={L.cy - 18} text-anchor="middle" class="t">{center}</text>}
+  {sub && <text x={L.cx} y={L.cy + 6} text-anchor="middle" class="s">{sub}</text>}
+</svg>
+<style>
+  .hemi-static { width: 100%; max-width: 820px; height: auto; display: block; }
+  .hemi-static a circle:hover { stroke: var(--ink); stroke-width: 2; }
+  .hl { stroke: var(--ink); stroke-width: 3; }
+  .t { font-family: var(--serif); font-weight: 600; font-size: 48px; fill: var(--ink); }
+  .s { font-size: 15px; fill: var(--ink-62); }
+</style>

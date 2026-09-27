@@ -1,0 +1,248 @@
+---
+import { layoutHemicycle } from '../lib/hemicycle';
+import { VIEWS, viewById } from '../lib/views';
+import type { Depute, Groupe } from '../lib/data';
+import { fmtPct, fmtEur } from '../lib/data';
+
+interface Props {
+  deputes: Depute[];
+  groupes: Groupe[];
+  view: string;
+}
+const { deputes, groupes, view } = Astro.props;
+const v = viewById(view);
+const L = layoutHemicycle(deputes.length);
+const gcolor = new Map(groupes.map((g) => [g.sigle, g.couleur]));
+
+function fill(viewId: string, d: Depute): string {
+  const vw = viewById(viewId);
+  if (vw.kind === 'groupe') return gcolor.get(d.groupe) ?? '#9A9A9A';
+  const x = vw.value!(d);
+  if (x == null) return 'var(--ink-8)';
+  if (vw.kind === 'binaire') return x ? 'var(--ramp-to)' : 'var(--ink-16)';
+  const t = Math.round((x as number) * 100);
+  return `color-mix(in srgb, var(--ramp-to) ${t}%, var(--ramp-from))`;
+}
+
+// Valeurs compactes de chaque vue (entiers), converties en couleurs dans le navigateur.
+const gIndex = new Map(groupes.map((g, i) => [g.sigle, i]));
+function code(viewId: string, d: Depute): number {
+  const vw = viewById(viewId);
+  if (vw.kind === 'groupe') return gIndex.get(d.groupe) ?? -1;
+  const x = vw.value!(d);
+  if (x == null) return -1;
+  if (vw.kind === 'binaire') return x ? 1 : 0;
+  return Math.round((x as number) * 100);
+}
+const codes: Record<string, number[]> = Object.fromEntries(VIEWS.map((vw) => [vw.id, deputes.map((d) => code(vw.id, d))]));
+const initial = deputes.map((d) => fill(v.id, d));
+const people = deputes.map((d) => ({
+  s: d.slug,
+  n: `${d.prenom} ${d.nom}`,
+  g: d.groupe,
+  c: d.circonscription,
+  a: d.age,
+  f: d.femme,
+  p: d.participation == null ? null : fmtPct(d.participation),
+  l: d.loyaute == null ? null : fmtPct(d.loyaute),
+  m: d.legislatures,
+  r: d.revenusAnnexes == null ? null : fmtEur(d.revenusAnnexes),
+  ph: d.photo,
+}));
+const groupNames = Object.fromEntries(groupes.map((g) => [g.sigle, g.nom]));
+---
+<section class="hemi-block" data-view={v.id}>
+  <div class="views" role="toolbar" aria-label="Thématique">
+    <div class="seg">
+      {VIEWS.map((vw) => (
+        <a href={vw.id === 'groupes' ? '/' : `/vue/${vw.id}/`} data-view={vw.id} aria-pressed={vw.id === v.id ? 'true' : 'false'}>{vw.label}</a>
+      ))}
+    </div>
+  </div>
+
+  <div class="hemi-grid">
+    <figure class="hemi-fig">
+      <svg class="hemi" viewBox={`0 0 ${L.width.toFixed(0)} ${L.height.toFixed(0)}`} role="img" aria-label={`Hémicycle de ${deputes.length} sièges : ${v.titre}`}>
+        {L.seats.map((s, i) => (
+          <circle cx={s.x.toFixed(1)} cy={s.y.toFixed(1)} r={L.dot.toFixed(2)} data-i={i} style={`fill:${initial[i]}`} />
+        ))}
+        <text x={L.cx} y={L.cy - 18} text-anchor="middle" class="hemi-total">{deputes.length}</text>
+        <text x={L.cx} y={L.cy + 6} text-anchor="middle" class="hemi-sub">députés</text>
+      </svg>
+      <figcaption class="legend">
+        {v.kind === 'groupe' && (
+          <ul class="glegend">
+            {groupes.map((g) => (
+              <li title={g.nom}><i style={`background:${g.couleur}`}></i>{g.sigle} <span class="num muted">{g.effectif}</span></li>
+            ))}
+          </ul>
+        )}
+        {v.kind === 'rampe' && (
+          <div class="rlegend">
+            <div class="ramp"></div>
+            <div class="rl"><span>{v.legende?.[0]}</span><span>{v.legende?.[1]}</span></div>
+          </div>
+        )}
+        {v.kind === 'binaire' && (
+          <ul class="glegend">
+            <li><i style="background:var(--ink-16)"></i>{v.legende?.[0]}</li>
+            <li><i style="background:var(--ramp-to)"></i>{v.legende?.[1]}</li>
+          </ul>
+        )}
+      </figcaption>
+    </figure>
+
+    <aside class="panel" hidden aria-live="polite">
+      <button class="close" type="button" aria-label="Fermer la fiche">×</button>
+      <div class="panel-body"></div>
+    </aside>
+  </div>
+
+  <div class="finder">
+    <label for="find-depute" class="small muted">Trouver un député par nom ou département</label>
+    <input id="find-depute" list="deputes-list" placeholder="Ex. Paris, ou un nom" autocomplete="off" />
+    <datalist id="deputes-list">
+      {people.map((p) => <option value={`${p.n}${p.c ? ' · ' + p.c : ''}`} />)}
+    </datalist>
+  </div>
+
+  <script type="application/json" class="hemi-data" set:html={JSON.stringify({ codes, colors: groupes.map((g) => g.couleur), people, groupNames, views: VIEWS.map(({ id, titre, intro, kind, legende }) => ({ id, titre, intro, kind, legende })) })}></script>
+</section>
+
+<script>
+  type Person = { s: string; n: string; g: string; c: string | null; a: number | null; f: boolean; p: string | null; l: string | null; m: number | null; r: string | null; ph: string | null };
+  type ViewLite = { id: string; titre: string; intro: string; kind: string; legende?: [string, string] };
+
+  for (const block of document.querySelectorAll<HTMLElement>('.hemi-block')) {
+    const data = JSON.parse(block.querySelector('.hemi-data')!.textContent!) as {
+      codes: Record<string, number[]>; colors: string[]; people: Person[]; groupNames: Record<string, string>; views: ViewLite[];
+    };
+    const toFill = (kind: string, c: number) => {
+      if (c < 0) return 'var(--ink-8)';
+      if (kind === 'groupe') return data.colors[c];
+      if (kind === 'binaire') return c ? 'var(--ramp-to)' : 'var(--ink-16)';
+      return `color-mix(in srgb, var(--ramp-to) ${c}%, var(--ramp-from))`;
+    };
+    const circles = [...block.querySelectorAll<SVGCircleElement>('circle')];
+    const panel = block.querySelector<HTMLElement>('.panel')!;
+    const body = panel.querySelector<HTMLElement>('.panel-body')!;
+    const baseUrl = location.pathname;
+    let selected: SVGCircleElement | null = null;
+
+    const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+    function open(i: number, push = true) {
+      const p = data.people[i];
+      selected?.classList.remove('sel');
+      selected = circles[i];
+      selected.classList.add('sel');
+      const rows: [string, string | null][] = [
+        ['Groupe', data.groupNames[p.g] ?? p.g],
+        ['Circonscription', p.c],
+        ['Âge', p.a == null ? null : `${p.a} ans`],
+        ['Présence aux votes', p.p],
+        ['Vote avec son groupe', p.l],
+        ['Législatures', p.m == null ? null : String(p.m)],
+        ['Revenus annexes déclarés', p.r],
+      ];
+      body.innerHTML = `
+        <p class="kicker">${esc(p.g)}</p>
+        <h3>${esc(p.n)}</h3>
+        <dl>${rows.filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v!)}</dd>`).join('')}</dl>
+        <a class="more" href="/deputes/${p.s}/">Fiche complète et sources →</a>`;
+      panel.hidden = false;
+      if (push) history.pushState({ seat: i }, '', `/deputes/${p.s}/`);
+    }
+    function close(push = true) {
+      panel.hidden = true;
+      selected?.classList.remove('sel');
+      selected = null;
+      if (push) history.pushState({}, '', baseUrl);
+    }
+    function setView(id: string, push = true) {
+      const f = data.codes[id];
+      const kind = data.views.find((x) => x.id === id)?.kind;
+      if (!f || !kind) return;
+      circles.forEach((c, i) => (c.style.fill = toFill(kind, f[i])));
+      block.dataset.view = id;
+      block.querySelectorAll<HTMLAnchorElement>('.views a').forEach((a) => a.setAttribute('aria-pressed', String(a.dataset.view === id)));
+      const v = data.views.find((x) => x.id === id)!;
+      document.dispatchEvent(new CustomEvent('hemiview', { detail: v }));
+      if (push) history.pushState({ view: id }, '', id === 'groupes' ? '/' : `/vue/${id}/`);
+    }
+
+    block.querySelector('svg')!.addEventListener('click', (e) => {
+      const c = (e.target as Element).closest('circle');
+      if (c) open(Number(c.getAttribute('data-i')));
+    });
+    panel.querySelector('.close')!.addEventListener('click', () => close());
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) close(); });
+    window.addEventListener('popstate', (e) => {
+      if (e.state?.seat != null) open(e.state.seat, false);
+      else close(false);
+      if (e.state?.view) setView(e.state.view, false);
+    });
+    block.querySelectorAll<HTMLAnchorElement>('.views a').forEach((a) =>
+      a.addEventListener('click', (e) => {
+        // Les vues avec une légende différente rechargent la page ; les autres changent sur place.
+        const cur = data.views.find((x) => x.id === block.dataset.view)!;
+        const next = data.views.find((x) => x.id === a.dataset.view)!;
+        if (cur.kind !== next.kind) return;
+        e.preventDefault();
+        setView(next.id);
+        const h = document.querySelector('[data-view-title]');
+        const p = document.querySelector('[data-view-intro]');
+        if (h) h.textContent = next.titre;
+        if (p) p.textContent = next.intro;
+        const rl = block.querySelector('.rl');
+        if (rl && next.legende) rl.innerHTML = `<span>${next.legende[0]}</span><span>${next.legende[1]}</span>`;
+      }),
+    );
+    const input = block.querySelector<HTMLInputElement>('#find-depute')!;
+    input.addEventListener('change', () => {
+      const q = input.value.split(' · ')[0].trim().toLowerCase();
+      const i = data.people.findIndex((p) => p.n.toLowerCase() === q);
+      if (i >= 0) { open(i); circles[i].scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    });
+  }
+</script>
+
+<style>
+  .hemi-block { display: grid; gap: 16px; }
+  .views { overflow-x: auto; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
+  .views .seg { flex-wrap: nowrap; white-space: nowrap; }
+  .hemi-grid { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); }
+  .hemi-fig { margin: 0; display: grid; gap: 12px; }
+  .hemi { width: 100%; max-width: 900px; height: auto; display: block; touch-action: manipulation; }
+  .hemi circle { cursor: pointer; transition: fill 0.35s ease; }
+  .hemi circle:hover { stroke: var(--ink); stroke-width: 2; }
+  .hemi :global(circle.sel) { stroke: var(--ink); stroke-width: 3; }
+  .hemi-total { font-family: var(--serif); font-weight: 600; font-size: 52px; fill: var(--ink); }
+  .hemi-sub { font-size: 15px; fill: var(--ink-62); }
+  .glegend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.85rem; }
+  .glegend li { display: inline-flex; align-items: center; gap: 6px; }
+  .glegend i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .rlegend { display: grid; gap: 4px; max-width: 420px; }
+  .ramp { height: 10px; border-radius: 2px; background: linear-gradient(90deg, var(--ramp-from), var(--ramp-to)); }
+  .rl { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--ink-62); }
+
+  .panel {
+    position: fixed; z-index: 20; background: var(--bg); border: 1px solid var(--ink-16);
+    box-shadow: 0 12px 40px color-mix(in srgb, var(--ink) 18%, transparent);
+    left: 0; right: 0; bottom: 0; border-radius: 14px 14px 0 0; max-height: 72vh; overflow: auto;
+    padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+  @media (min-width: 900px) {
+    .hemi-grid { grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; }
+    .panel { position: sticky; top: 16px; inset: auto; align-self: start; border-radius: 8px; box-shadow: none; max-height: none; }
+    .hemi-grid:has(.panel[hidden]) { grid-template-columns: minmax(0, 1fr); }
+  }
+  .close { position: absolute; top: 8px; right: 10px; background: none; border: 0; font-size: 1.6rem; line-height: 1; padding: 6px 10px; color: var(--ink-62); }
+  .panel :global(h3) { font-size: 1.5rem; margin-block: 4px 12px; padding-right: 32px; }
+  .panel :global(dl) { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0 0 16px; font-size: 0.92rem; }
+  .panel :global(dt) { color: var(--ink-62); }
+  .panel :global(dd) { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+  .panel :global(.more) { font-weight: 600; }
+  .finder { display: grid; gap: 4px; max-width: 420px; }
+  .finder input { font: inherit; padding: 9px 12px; border: 1px solid var(--ink-16); border-radius: 8px; background: var(--bg); color: var(--ink); }
+</style>

@@ -1,0 +1,72 @@
+---
+// Hémicycle d'un scrutin, dessiné dans le navigateur à partir d'une chaîne d'un caractère par siège :
+// p pour, c contre, a abstention, n présent sans voter, x absent, h pas encore élu.
+interface Props {
+  codes: string;
+  label: string;
+}
+const { codes, label } = Astro.props;
+---
+<div class="hv" data-codes={codes}>
+  <svg class="hv-svg" role="img" aria-label={label}></svg>
+  <p class="hv-tip small muted" aria-live="polite">Survolez ou touchez un siège pour voir le député.</p>
+</div>
+
+<script>
+  import { layoutHemicycle } from '../lib/hemicycle';
+
+  type Mini = [string, string, string][];
+  const FILL: Record<string, string> = {
+    p: 'var(--vote-pour)', c: 'var(--vote-contre)', a: 'var(--vote-abstention)',
+    n: 'var(--ink-16)', x: 'var(--ink-4)', h: 'var(--ink-4)',
+  };
+  const LABEL: Record<string, string> = {
+    p: 'pour', c: 'contre', a: 'abstention', n: "présent, n'a pas voté", x: 'absent', h: 'pas encore élu',
+  };
+  let people: Promise<Mini> | null = null;
+  const NS = 'http://www.w3.org/2000/svg';
+
+  for (const el of document.querySelectorAll<HTMLElement>('.hv')) {
+    const codes = el.dataset.codes!;
+    const L = layoutHemicycle(codes.length);
+    const svg = el.querySelector('svg')!;
+    svg.setAttribute('viewBox', `0 0 ${L.width.toFixed(0)} ${L.height.toFixed(0)}`);
+    const frag = document.createDocumentFragment();
+    L.seats.forEach((s, i) => {
+      const c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', s.x.toFixed(1));
+      c.setAttribute('cy', s.y.toFixed(1));
+      c.setAttribute('r', L.dot.toFixed(2));
+      c.style.fill = FILL[codes[i]] ?? 'var(--ink-4)';
+      c.dataset.i = String(i);
+      frag.appendChild(c);
+    });
+    svg.appendChild(frag);
+    const tip = el.querySelector<HTMLElement>('.hv-tip')!;
+    const who = async (i: number) => {
+      people ??= fetch('/deputes-mini.json').then((r) => r.json());
+      const p = (await people)[i];
+      return p;
+    };
+    svg.addEventListener('pointerover', async (e) => {
+      const c = (e.target as Element).closest('circle');
+      if (!c) return;
+      const i = Number(c.getAttribute('data-i'));
+      const p = await who(i);
+      tip.textContent = `${p[1]} (${p[2]}) : ${LABEL[codes[i]]}`;
+    });
+    svg.addEventListener('click', async (e) => {
+      const c = (e.target as Element).closest('circle');
+      if (!c) return;
+      const p = await who(Number(c.getAttribute('data-i')));
+      location.href = `/deputes/${p[0]}/`;
+    });
+  }
+</script>
+
+<style>
+  .hv { display: grid; gap: 6px; }
+  .hv-svg { width: 100%; max-width: 820px; height: auto; display: block; aspect-ratio: 2 / 1.02; }
+  .hv-svg :global(circle) { cursor: pointer; }
+  .hv-svg :global(circle:hover) { stroke: var(--ink); stroke-width: 2; }
+</style>

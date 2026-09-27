@@ -1,0 +1,342 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link "Parlementeur" [ref=e3] [cursor=pointer]:
+      - /url: /
+    - navigation "Principale" [ref=e4]:
+      - link "Assemblée" [ref=e5] [cursor=pointer]:
+        - /url: /
+      - link "Scrutins" [ref=e6] [cursor=pointer]:
+        - /url: /scrutins/
+      - link "Députés" [ref=e7] [cursor=pointer]:
+        - /url: /deputes/
+      - link "Depuis 1958" [ref=e8] [cursor=pointer]:
+        - /url: /histoire/
+      - link "Méthode" [ref=e9] [cursor=pointer]:
+        - /url: /methode/
+    - button "Changer de thème" [ref=e10] [cursor=pointer]:
+      - img [ref=e11]
+  - main [ref=e14]:
+    - article [ref=e15]:
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - paragraph [ref=e18]: Union des droites pour la République
+          - heading "Gérault Verny" [level=1] [ref=e20]
+          - paragraph [ref=e21]: Député de la 14e circonscription de Bouches-du-Rhône, 41 ans. (23) - Chef d'entreprise de 10 salariés ou plus.
+        - img "Portrait officiel de Gérault Verny" [ref=e22]
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]: 12 %
+          - generic [ref=e26]: des scrutins votés
+        - generic [ref=e27]:
+          - generic [ref=e28]: 95 %
+          - generic [ref=e29]: de votes alignés sur son groupe
+        - generic [ref=e30]:
+          - generic [ref=e31]: "1"
+          - generic [ref=e32]: premier mandat
+        - generic [ref=e33]:
+          - generic [ref=e34]: 160 000 €
+          - generic [ref=e35]: de revenus annexes déclarés (dernière année)
+      - generic [ref=e36]:
+        - heading "Sa place dans l'hémicycle" [level=2] [ref=e37]
+        - img "Position de Gérault Verny dans l'hémicycle" [ref=e38]
+        - paragraph [ref=e616]:
+          - text: "Source :"
+          - link "fiche officielle de l'Assemblée nationale" [ref=e617] [cursor=pointer]:
+            - /url: https://www.assemblee-nationale.fr/dyn/deputes/PA840809
+          - text: .
+      - generic [ref=e618]:
+        - heading "Ses votes sur les scrutins marquants" [level=2] [ref=e619]
+        - list [ref=e620]:
+          - listitem [ref=e621]:
+            - generic [ref=e622]: Pour
+            - link "L'ensemble du projet de loi relatif à la protection des enfants (première lecture)" [ref=e623] [cursor=pointer]:
+              - /url: /scrutins/8430/
+            - generic [ref=e624]: 21 juillet 2026
+          - listitem [ref=e625]:
+            - generic [ref=e626]: Pour
+            - link "L'ensemble de la proposition de loi visant à protéger les mineurs des risques auxquels les expose l'utilisation des réseaux sociaux (texte de la commission mixte paritaire)" [ref=e627] [cursor=pointer]:
+              - /url: /scrutins/8431/
+            - generic [ref=e628]: 21 juillet 2026
+          - listitem [ref=e629]:
+            - generic [ref=e630]: Pour
+            - link "L'ensemble du projet de loi visant à offrir des réponses immédiates aux phénomènes troublant l'ordre public, la sécurité et la tranquilité de nos concitoyens (texte de la commission mixte paritaire)" [ref=e631] [cursor=pointer]:
+              - /url: /scrutins/8433/
+            - generic [ref=e632]: 21 juillet 2026
+          - listitem [ref=e633]:
+            - generic [ref=e634]: Pour
+            - link "L'ensemble de la proposition de loi visant à moderniser la gestion du patrimoine immobilier de l'État (texte de la commission mixte paritaire)" [ref=e635] [cursor=pointer]:
+              - /url: /scrutins/8434/
+            - generic [ref=e636]: 21 juillet 2026
+          - listitem [ref=e637]:
+            - generic [ref=e638]: Abstention
+            - link "L'ensemble de la proposition de loi relative à l'organisation, à la gestion et au financement du sport professionnel (texte de la commission mixte paritaire)" [ref=e639] [cursor=pointer]:
+              - /url: /scrutins/8418/
+            - generic [ref=e640]: 20 juillet 2026 · contre la ligne de son groupe
+          - listitem [ref=e641]:
+            - generic [ref=e642]: Pour
+            - link "L'ensemble de la proposition de loi visant à doter la France d'une stratégie nationale de lutte contre les maladies cardio-neuro-vasculaires (texte de la commission mixte paritaire)" [ref=e643] [cursor=pointer]:
+              - /url: /scrutins/8419/
+            - generic [ref=e644]: 20 juillet 2026
+          - listitem [ref=e645]:
+            - generic [ref=e646]: Pour
+            - link "L'ensemble de la proposition de loi pour une montagne vivante et souveraine (texte de la commission mixte paritaire)" [ref=e647] [cursor=pointer]:
+              - /url: /scrutins/8421/
+            - generic [ref=e648]: 20 juillet 2026
+          - listitem [ref=e649]:
+            - generic [ref=e650]: Pour
+            - link "L'ensemble du projet de loi d'urgence pour la protection et la souveraineté agricoles (texte de la commission mixte paritaire)" [ref=e651] [cursor=pointer]:
+              - /url: /scrutins/8427/
+            - generic [ref=e652]: 20 juillet 2026
+          - listitem [ref=e653]:
+            - generic [ref=e654]: Pour
+            - link "L'ensemble du projet de loi visant à offrir des réponses immédiates aux phénomènes troublant l'ordre public, la sécurité et la tranquillité de nos concitoyens (première lecture)" [ref=e655] [cursor=pointer]:
+              - /url: /scrutins/8279/
+            - generic [ref=e656]: 15 juillet 2026
+          - listitem [ref=e657]:
+            - generic [ref=e658]: Contre
+            - link "L'ensemble de la proposition de loi relative au droit à l'aide à mourir (lecture définitive)" [ref=e659] [cursor=pointer]:
+              - /url: /scrutins/8280/
+            - generic [ref=e660]: 15 juillet 2026
+          - listitem [ref=e661]:
+            - generic [ref=e662]: Absent
+            - link "L'ensemble du projet de loi sur la justice criminelle et le respect des victimes (texte de la commission mixte paritaire)" [ref=e663] [cursor=pointer]:
+              - /url: /scrutins/8042/
+            - generic [ref=e664]: 8 juillet 2026
+          - listitem [ref=e665]:
+            - generic [ref=e666]: Absent
+            - link "L'ensemble du projet de loi organique relatif au renforcement des juridictions criminelles (texte de la commission mixte paritaire)" [ref=e667] [cursor=pointer]:
+              - /url: /scrutins/8043/
+            - generic [ref=e668]: 8 juillet 2026
+          - listitem [ref=e669]:
+            - generic [ref=e670]: Pour
+            - link "L'ensemble du projet de loi sur la justice criminelle et le respect des victimes (première lecture)" [ref=e671] [cursor=pointer]:
+              - /url: /scrutins/7980/
+            - generic [ref=e672]: 7 juillet 2026
+          - listitem [ref=e673]:
+            - generic [ref=e674]: Pour
+            - link "L'ensemble du projet de loi organique relatif au renforcement des juridictions criminelles (première lecture)" [ref=e675] [cursor=pointer]:
+              - /url: /scrutins/7981/
+            - generic [ref=e676]: 7 juillet 2026
+          - listitem [ref=e677]:
+            - generic [ref=e678]: Pour
+            - link "L'ensemble de la proposition de loi visant à reconnaître une présomption de légitime défense pour les forces de l'ordre, dans l'exercice de leurs fonctions (première lecture)" [ref=e679] [cursor=pointer]:
+              - /url: /scrutins/7987/
+            - generic [ref=e680]: 7 juillet 2026
+          - listitem [ref=e681]:
+            - generic [ref=e682]: Absent
+            - link "La motion de censure déposée en application de l'article 49, alinéa 2, de la Constitution par Mmes Cyrielle Chatelain, Nadège Abomangoli et 56 députés" [ref=e683] [cursor=pointer]:
+              - /url: /scrutins/7979/
+            - generic [ref=e684]: 6 juillet 2026
+          - listitem [ref=e685]:
+            - generic [ref=e686]: Pour
+            - link "L'ensemble du projet de loi actualisant la programmation militaire pour les années 2024 à 2030 et portant diverses dispositions intéressant la défense (texte de la commission mixte paritaire)" [ref=e687] [cursor=pointer]:
+              - /url: /scrutins/7905/
+            - generic [ref=e688]: 1 juillet 2026
+          - listitem [ref=e689]:
+            - generic [ref=e690]: Contre
+            - link "L'ensemble de la proposition de loi relative au droit à l'aide à mourir (nouvelle lecture)" [ref=e691] [cursor=pointer]:
+              - /url: /scrutins/7894/
+            - generic [ref=e692]: 30 juin 2026
+          - listitem [ref=e693]:
+            - generic [ref=e694]: Pour
+            - link "L’ensemble de la proposition de loi visant à réduire l’impact environnemental de l’industrie textile (texte de la commission mixte paritaire)" [ref=e695] [cursor=pointer]:
+              - /url: /scrutins/7494/
+            - generic [ref=e696]: 24 juin 2026
+          - listitem [ref=e697]:
+            - generic [ref=e698]: Contre
+            - link "L'ensemble du projet de loi constitutionnelle pour une Corse autonome au sein de la République (première lecture)" [ref=e699] [cursor=pointer]:
+              - /url: /scrutins/7454/
+            - generic [ref=e700]: 23 juin 2026
+          - listitem [ref=e701]:
+            - generic [ref=e702]: Pour
+            - link "L'ensemble de la proposition de loi visant à améliorer l'accès au logement des travailleurs des services publics (texte de la commission mixte paritaire)" [ref=e703] [cursor=pointer]:
+              - /url: /scrutins/7408/
+            - generic [ref=e704]: 17 juin 2026
+          - listitem [ref=e705]:
+            - generic [ref=e706]: Pour
+            - link "L'ensemble de la proposition de loi visant à relancer les investissements dans le secteur de l'hydroélectricité pour contribuer à la transition énergétique (texte de la commission mixte paritaire)" [ref=e707] [cursor=pointer]:
+              - /url: /scrutins/7409/
+            - generic [ref=e708]: 17 juin 2026
+          - listitem [ref=e709]:
+            - generic [ref=e710]: Pour
+            - link "L'ensemble de la proposition de loi visant à renforcer la sécurité, la rétention administrative et la prévention des risques d’attentat (texte de la commission mixte paritaire)" [ref=e711] [cursor=pointer]:
+              - /url: /scrutins/7405/
+            - generic [ref=e712]: 16 juin 2026
+          - listitem [ref=e713]:
+            - generic [ref=e714]: Pour
+            - link "L'ensemble du projet de loi d'urgence pour la protection et la souveraineté agricoles (première lecture)" [ref=e715] [cursor=pointer]:
+              - /url: /scrutins/7259/
+            - generic [ref=e716]: 2 juin 2026
+          - listitem [ref=e717]:
+            - generic [ref=e718]: Absent
+            - link "L'ensemble du projet de loi portant transposition de l'avenant n° 3 du 25 février 2026 au protocole d'accord du 10 novembre 2023 relatif à l'assurance chômage (deuxième lecture)" [ref=e719] [cursor=pointer]:
+              - /url: /scrutins/7260/
+            - generic [ref=e720]: 2 juin 2026
+          - listitem [ref=e721]:
+            - generic [ref=e722]: Absent
+            - link "L'ensemble de la proposition de loi organique portant régularisation des natifs dans le corps électoral pour les élections au congrès et aux assemblées de province de Nouvelle-Calédonie (première lecture)" [ref=e723] [cursor=pointer]:
+              - /url: /scrutins/6753/
+            - generic [ref=e724]: 20 mai 2026
+          - listitem [ref=e725]:
+            - generic [ref=e726]: Pour
+            - link "L'ensemble du projet de loi actualisant la programmation militaire pour les années 2024 à 2030 et portant diverses dispositions intéressant la défense (première lecture)" [ref=e727] [cursor=pointer]:
+              - /url: /scrutins/6736/
+            - generic [ref=e728]: 19 mai 2026
+          - listitem [ref=e729]:
+            - generic [ref=e730]: Pour
+            - link "L'ensemble de la proposition de loi visant à renforcer la sécurité, la rétention administrative et la prévention des risques d'attentat (première lecture)" [ref=e731] [cursor=pointer]:
+              - /url: /scrutins/6318/
+            - generic [ref=e732]: 5 mai 2026
+          - listitem [ref=e733]:
+            - generic [ref=e734]: Pour
+            - link "L'ensemble du projet de loi relatif à la lutte contre les fraudes sociales et fiscales (texte de la commission mixte paritaire)" [ref=e735] [cursor=pointer]:
+              - /url: /scrutins/6319/
+            - generic [ref=e736]: 5 mai 2026
+          - listitem [ref=e737]:
+            - generic [ref=e738]: Pour
+            - link "L'ensemble du projet de loi de simplification de la vie économique (texte de la commission mixte paritaire)" [ref=e739] [cursor=pointer]:
+              - /url: /scrutins/6184/
+            - generic [ref=e740]: 14 avril 2026
+          - listitem [ref=e741]:
+            - generic [ref=e742]: Pour
+            - link "L'ensemble du projet de loi relatif à la lutte contre les fraudes sociales et fiscales (première lecture)" [ref=e743] [cursor=pointer]:
+              - /url: /scrutins/6023/
+            - generic [ref=e744]: 7 avril 2026
+          - listitem [ref=e745]:
+            - generic [ref=e746]: Pour
+            - link "L'ensemble de la proposition de loi visant à garantir l'égal accès de tous à l'accompagnement et aux soins palliatifs (deuxième lecture)" [ref=e747] [cursor=pointer]:
+              - /url: /scrutins/5728/
+            - generic [ref=e748]: 25 février 2026
+          - listitem [ref=e749]:
+            - generic [ref=e750]: Contre
+            - link "L'ensemble de la proposition de loi relative au droit à l'aide à mourir (deuxième lecture)" [ref=e751] [cursor=pointer]:
+              - /url: /scrutins/5729/
+            - generic [ref=e752]: 25 février 2026
+          - listitem [ref=e753]:
+            - generic [ref=e754]: Pour
+            - link "La motion de censure, déposée en application de l'article 49, alinéa 2, de la Constitution, par M. Jean-Philippe Tanguy et 59 députés" [ref=e755] [cursor=pointer]:
+              - /url: /scrutins/5730/
+            - generic [ref=e756]: 25 février 2026
+          - listitem [ref=e757]:
+            - generic [ref=e758]: Absent
+            - link "La motion de censure, déposée en application de l'article 49, alinéa 2, de la Constitution, par Mme Mathilde Panot et 57 députés" [ref=e759] [cursor=pointer]:
+              - /url: /scrutins/5731/
+            - generic [ref=e760]: 25 février 2026
+          - listitem [ref=e761]:
+            - generic [ref=e762]: Pour
+            - link "L'ensemble du projet de loi relatif à l'organisation des jeux Olympiques et Paralympiques de 2030 (texte de la commission mixte paritaire)" [ref=e763] [cursor=pointer]:
+              - /url: /scrutins/5296/
+            - generic [ref=e764]: 3 février 2026
+          - listitem [ref=e765]:
+            - generic [ref=e766]: Pour
+            - link "La motion de censure déposée en application de l'article 49, alinéa 3, de la Constitution par M. Stéphane Peu, Mme Mathilde Panot, Mme Cyrielle Chatelain et 110 députés" [ref=e767] [cursor=pointer]:
+              - /url: /scrutins/5284/
+            - generic [ref=e768]: 2 février 2026
+          - listitem [ref=e769]:
+            - generic [ref=e770]: Pour
+            - link "La motion de censure déposée en application de l'article 49, alinéa 3, de la Constitution par Mme Marine Le Pen, M. Éric Ciotti et 104 députés" [ref=e771] [cursor=pointer]:
+              - /url: /scrutins/5285/
+            - generic [ref=e772]: 2 février 2026
+          - listitem [ref=e773]:
+            - generic [ref=e774]: Pour
+            - link "La motion de censure déposée en application de l'article 49, alinéa 3, de la Constitution par Mme Cyrielle Chatelain, Mme Mathilde Panot, M. Stéphane Peu et 110 députés" [ref=e775] [cursor=pointer]:
+              - /url: /scrutins/5193/
+            - generic [ref=e776]: 27 janvier 2026
+          - listitem [ref=e777]:
+            - generic [ref=e778]: Pour
+            - link "La motion de censure déposée en application de l'article 49, alinéa 3, de la Constitution par Mme Marine Le Pen, M. Éric Ciotti et 102 députés" [ref=e779] [cursor=pointer]:
+              - /url: /scrutins/5194/
+            - generic [ref=e780]: 27 janvier 2026
+      - generic [ref=e781]:
+        - heading "Intérêts et activités déclarés" [level=2] [ref=e782]
+        - generic [ref=e783]:
+          - paragraph [ref=e784]: Déclaration d'intérêts et d'activités déposée auprès de la HATVP le 17 décembre 2024.
+          - table "Activités professionnelles déclarées" [ref=e785]:
+            - caption [ref=e786]: Activités professionnelles déclarées
+            - rowgroup [ref=e787]:
+              - row "Activité déclarée Dernier montant" [ref=e788]:
+                - columnheader "Activité déclarée" [ref=e789]
+                - columnheader "Dernier montant" [ref=e790]
+            - rowgroup [ref=e791]:
+              - row "gérant · MAJI 160 000 € (2024)" [ref=e792]:
+                - cell "gérant · MAJI" [ref=e793]
+                - cell "160 000 € (2024)" [ref=e794]
+              - 'row "Direction : MAJI (holding industrielle) 0 € (2024)" [ref=e795]':
+                - 'cell "Direction : MAJI (holding industrielle)" [ref=e796]'
+                - cell "0 € (2024)" [ref=e797]
+              - 'row "Direction : Foncière de la tour (société foncière) 0 € (2024)" [ref=e798]':
+                - 'cell "Direction : Foncière de la tour (société foncière)" [ref=e799]'
+                - cell "0 € (2024)" [ref=e800]
+              - 'row "Direction : scea [Données non publiées] (domaine viticole) 0 € (2024)" [ref=e801]':
+                - 'cell "Direction : scea [Données non publiées] (domaine viticole)" [ref=e802]'
+                - cell "0 € (2024)" [ref=e803]
+          - table "Participations financières déclarées" [ref=e804]:
+            - caption [ref=e805]: Participations financières déclarées
+            - rowgroup [ref=e806]:
+              - row "Participation au capital d'une société Évaluation déclarée" [ref=e807]:
+                - columnheader "Participation au capital d'une société" [ref=e808]
+                - columnheader "Évaluation déclarée" [ref=e809]
+            - rowgroup [ref=e810]:
+              - row "MAJI · 10000 parts 22 000 000 €" [ref=e811]:
+                - cell "MAJI · 10000 parts" [ref=e812]
+                - cell "22 000 000 €" [ref=e813]
+              - row "Fonciere de la Tour · 5000 parts 2 500 000 €" [ref=e814]:
+                - cell "Fonciere de la Tour · 5000 parts" [ref=e815]
+                - cell "2 500 000 €" [ref=e816]
+              - row "scea [Données non publiées] · 500 parts 20 000 €" [ref=e817]:
+                - cell "scea [Données non publiées] · 500 parts" [ref=e818]
+                - cell "20 000 €" [ref=e819]
+          - paragraph [ref=e820]: "Activité du conjoint déclarée : gérant · Foncière de la tour"
+          - paragraph [ref=e821]:
+            - text: "Source :"
+            - link "déclaration publiée par la HATVP" [ref=e822] [cursor=pointer]:
+              - /url: https://www.hatvp.fr/livraison/dossiers/verny-gerault-diam31344-depute-13.pdf
+            - text: ". Le patrimoine des parlementaires n'est pas publiable (article LO 135-2 du code électoral) :"
+            - link "pourquoi il n'apparaît pas ici" [ref=e823] [cursor=pointer]:
+              - /url: /methode/#patrimoine
+            - text: .
+      - generic [ref=e824]:
+        - heading "Condamnations définitives" [level=2] [ref=e825]
+        - paragraph [ref=e826]:
+          - text: "Aucune condamnation définitive recensée. Seules les condamnations définitives, documentées par une source primaire, sont publiées :"
+          - link "notre règle" [ref=e827] [cursor=pointer]:
+            - /url: /methode/#condamnations
+          - text: .
+      - generic [ref=e828]:
+        - heading "Parcours" [level=2] [ref=e829]
+        - list [ref=e830]:
+          - listitem [ref=e831]:
+            - generic [ref=e832]:
+              - text: "17"
+              - superscript [ref=e833]: e
+              - text: législature
+            - text: · 7 juillet 2024 – aujourd'hui · 14e circonscription de Bouches-du-Rhône
+      - generic [ref=e834]:
+        - heading "Sources" [level=2] [ref=e835]
+        - list [ref=e836]:
+          - listitem [ref=e837]:
+            - link "Fiche du député, Assemblée nationale" [ref=e838] [cursor=pointer]:
+              - /url: https://www.assemblee-nationale.fr/dyn/deputes/PA840809
+          - listitem [ref=e839]:
+            - link "Déclarations publiées, HATVP" [ref=e840] [cursor=pointer]:
+              - /url: https://www.hatvp.fr/pages_nominatives/verny-gerault-27511
+          - listitem [ref=e841]: Données extraites le 27 septembre 2026.
+  - contentinfo [ref=e842]:
+    - separator [ref=e843]
+    - generic [ref=e844]:
+      - paragraph [ref=e845]:
+        - text: Parlementeur est conçu et développé par
+        - link "Jean-Rémi Larcelet-Prost" [ref=e846] [cursor=pointer]:
+          - /url: https://github.com/jrlprost
+        - text: .
+      - paragraph [ref=e847]:
+        - text: Données publiques officielles, chaque chiffre renvoie à sa source. Aucun cookie, aucun traceur, aucune mesure d'audience. Code et données
+        - link "ouverts" [ref=e848] [cursor=pointer]:
+          - /url: https://github.com/jrlprost/parlementeur
+        - text: .
+        - link "Méthode et sources" [ref=e849] [cursor=pointer]:
+          - /url: /methode/
+        - text: ·
+        - link "Coulisses du pipeline" [ref=e850] [cursor=pointer]:
+          - /url: /coulisses/
+        - text: .

@@ -1,0 +1,82 @@
+---
+import Base from '../../layouts/Base.astro';
+import { readOptional, fmtDate, fmtInt, type ScrutinIndex } from '../../lib/data';
+
+const idx = (readOptional<ScrutinIndex[]>('scrutins.json') ?? []).sort((a, b) => b.date.localeCompare(a.date) || b.numero - a.numero);
+const solennels = idx.filter((s) => s.solennel).slice(0, 30);
+const recents = idx.slice(0, 40);
+---
+<Base title="Scrutins" description="Tous les votes publics de l'Assemblée nationale : résultat, vote de chaque groupe et de chaque député." section="scrutins">
+  <div class="stack" style="--gap:36px">
+    <header class="stack" style="--gap:12px">
+      <p class="kicker">Assemblée nationale · {fmtInt(idx.length)} scrutins publics</p>
+      <h1>Rejouer un vote</h1>
+      <p class="lede">Choisissez un scrutin : l'hémicycle se colore selon le vote de chaque député. Les votes solennels portent sur l'ensemble d'un texte ; ce sont les plus importants.</p>
+    </header>
+
+    <section class="stack" style="--gap:10px">
+      <label for="q" class="kicker">Chercher un scrutin</label>
+      <input id="q" type="search" placeholder="Ex. retraites, budget, motion de censure" autocomplete="off" />
+      <ul class="list" id="results" hidden></ul>
+    </section>
+
+    {solennels.length > 0 && (
+      <section class="stack" style="--gap:12px">
+        <h2>Votes solennels récents</h2>
+        <ul class="list">
+          {solennels.map((s) => (
+            <li>
+              <span class={`pill ${s.adopte ? 'ok' : 'ko'}`}>{s.adopte ? 'Adopté' : 'Rejeté'}</span>
+              <a href={`/scrutins/${s.numero}/`}>{s.titre}</a>
+              <span class="muted small num">{fmtDate(s.date)} · {fmtInt(s.pour)} pour, {fmtInt(s.contre)} contre</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <section class="stack" style="--gap:12px">
+      <h2>Derniers scrutins</h2>
+      <ul class="list">
+        {recents.map((s) => (
+          <li>
+            <span class={`pill ${s.adopte ? 'ok' : 'ko'}`}>{s.adopte ? 'Adopté' : 'Rejeté'}</span>
+            <a href={`/scrutins/${s.numero}/`}>{s.titre}</a>
+            <span class="muted small num">{fmtDate(s.date)} · {fmtInt(s.pour)} pour, {fmtInt(s.contre)} contre</span>
+          </li>
+        ))}
+      </ul>
+      <p class="src">Source : <a href="https://data.assemblee-nationale.fr/">Assemblée nationale, open data des scrutins</a>.</p>
+    </section>
+  </div>
+</Base>
+
+<script>
+  const input = document.querySelector<HTMLInputElement>('#q')!;
+  const out = document.querySelector<HTMLUListElement>('#results')!;
+  let rows: [number, string, string, number, number, number, number][] | null = null;
+  const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  input.addEventListener('input', async () => {
+    const q = norm(input.value.trim());
+    if (q.length < 3) { out.hidden = true; return; }
+    rows ??= await fetch('/scrutins/index.json').then((r) => r.json());
+    const words = q.split(/\s+/);
+    const hits = rows!.filter((r) => { const t = norm(r[2]); return words.every((w) => t.includes(w)); })
+      .sort((a, b) => b[6] - a[6] || b[1].localeCompare(a[1])).slice(0, 50);
+    out.innerHTML = hits.length
+      ? hits.map((r) => `<li><span class="pill ${r[3] ? 'ok' : 'ko'}">${r[3] ? 'Adopté' : 'Rejeté'}</span><a href="/scrutins/${r[0]}/">${esc(r[2])}</a><span class="muted small num">${new Date(r[1]).toLocaleDateString('fr-FR')} · ${r[4]} pour, ${r[5]} contre${r[6] ? ' · solennel' : ''}</span></li>`).join('')
+      : '<li class="muted">Aucun scrutin ne correspond.</li>';
+    out.hidden = false;
+  });
+</script>
+
+<style>
+  input[type='search'] { font: inherit; font-size: 1.05rem; padding: 12px 14px; border: 1px solid var(--ink-16); border-radius: 8px; background: var(--bg); color: var(--ink); max-width: 560px; width: 100%; }
+  .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .list :global(li) { display: grid; grid-template-columns: 76px 1fr; gap: 2px 12px; align-items: baseline; }
+  .list :global(li > .small) { grid-column: 2; }
+  .list :global(.pill) { font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; text-align: center; color: #fff; }
+  .list :global(.pill.ok) { background: var(--vote-pour); }
+  .list :global(.pill.ko) { background: var(--vote-contre); }
+</style>

@@ -8,7 +8,7 @@ interface Props {
   og?: string;
   section?: string;
 }
-const { title, description = SITE.description, og = '/og/accueil.png', section } = Astro.props;
+const { title, description = SITE.description, og = '/og/vue-groupes.png', section } = Astro.props;
 const fullTitle = title ? `${title} · ${SITE.name}` : `${SITE.name} · ce que font vos élus, en chiffres`;
 const canonical = new URL(Astro.url.pathname, SITE.url).href;
 const ogUrl = new URL(og, SITE.url).href;

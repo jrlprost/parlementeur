@@ -1,0 +1,133 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link "Parlementeur" [ref=e3] [cursor=pointer]:
+      - /url: /
+    - navigation "Principale" [ref=e4]:
+      - link "Assemblée" [ref=e5] [cursor=pointer]:
+        - /url: /
+      - link "Scrutins" [ref=e6] [cursor=pointer]:
+        - /url: /scrutins/
+      - link "Députés" [ref=e7] [cursor=pointer]:
+        - /url: /deputes/
+      - link "Depuis 1958" [ref=e8] [cursor=pointer]:
+        - /url: /histoire/
+      - link "Méthode" [ref=e9] [cursor=pointer]:
+        - /url: /methode/
+    - button "Changer de thème" [ref=e10] [cursor=pointer]:
+      - img [ref=e11]
+  - main [ref=e14]:
+    - article [ref=e15]:
+      - generic [ref=e16]:
+        - paragraph [ref=e17]: Scrutin n° 8434 · 21 juillet 2026 · vote solennel
+        - heading "L'ensemble de la proposition de loi visant à moderniser la gestion du patrimoine immobilier de l'État (texte de la commission mixte paritaire)" [level=1] [ref=e18]
+        - paragraph [ref=e19]: Adopté
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e22]: "276"
+          - generic [ref=e23]: pour
+        - generic [ref=e24]:
+          - generic [ref=e25]: "86"
+          - generic [ref=e26]: contre
+        - generic [ref=e27]:
+          - generic [ref=e28]: "2"
+          - generic [ref=e29]: abstentions
+        - generic [ref=e30]:
+          - generic [ref=e31]: "209"
+          - generic [ref=e32]: députés actuels n'ont pas voté
+      - generic [ref=e33]:
+        - generic [ref=e34]:
+          - 'img "Vote de chaque député sur le scrutin 8434 : 276 pour, 86 contre, 2 abstentions" [ref=e35]'
+          - paragraph [ref=e613]: Survolez ou touchez un siège pour voir le député.
+        - list [ref=e614]:
+          - listitem [ref=e615]: Pour
+          - listitem [ref=e617]: Contre
+          - listitem [ref=e619]: Abstention
+          - listitem [ref=e621]: Présent, n'a pas voté
+          - listitem [ref=e623]: Absent ou pas encore élu
+        - paragraph [ref=e625]:
+          - text: "Hémicycle actuel : un député élu après ce scrutin apparaît comme absent. Source :"
+          - link "analyse du scrutin sur le site de l'Assemblée nationale" [ref=e626] [cursor=pointer]:
+            - /url: https://www.assemblee-nationale.fr/dyn/17/scrutins/8434
+          - text: .
+      - generic [ref=e627]:
+        - heading "Vote par groupe" [level=2] [ref=e628]
+        - generic [ref=e629]:
+          - generic [ref=e630]:
+            - generic "Rassemblement National" [ref=e633]: RN
+            - 'img "RN : 62 pour, 0 contre, 0 abstentions" [ref=e634]'
+            - generic [ref=e636]: 62 · 0 · 0
+          - generic [ref=e637]:
+            - generic "Ensemble pour la République" [ref=e640]: EPR
+            - 'img "EPR : 68 pour, 0 contre, 0 abstentions" [ref=e641]'
+            - generic [ref=e643]: 68 · 0 · 0
+          - generic [ref=e644]:
+            - generic "La France insoumise - Nouveau Front Populaire" [ref=e647]: LFI-NFP
+            - 'img "LFI-NFP : 0 pour, 49 contre, 0 abstentions" [ref=e648]'
+            - generic [ref=e650]: 0 · 49 · 0
+          - generic [ref=e651]:
+            - generic "Socialistes et apparentés" [ref=e654]: SOC
+            - 'img "SOC : 26 pour, 0 contre, 2 abstentions" [ref=e655]'
+            - generic [ref=e658]: 26 · 0 · 2
+          - generic [ref=e659]:
+            - generic "Droite Républicaine" [ref=e662]: DR
+            - 'img "DR : 26 pour, 0 contre, 0 abstentions" [ref=e663]'
+            - generic [ref=e665]: 26 · 0 · 0
+          - generic [ref=e666]:
+            - generic "Écologiste et Social" [ref=e669]: EcoS
+            - 'img "EcoS : 0 pour, 26 contre, 0 abstentions" [ref=e670]'
+            - generic [ref=e672]: 0 · 26 · 0
+          - generic [ref=e673]:
+            - generic "Les Démocrates" [ref=e676]: Dem
+            - 'img "Dem : 29 pour, 0 contre, 0 abstentions" [ref=e677]'
+            - generic [ref=e679]: 29 · 0 · 0
+          - generic [ref=e680]:
+            - generic "Horizons & Indépendants" [ref=e683]: HOR
+            - 'img "HOR : 29 pour, 0 contre, 0 abstentions" [ref=e684]'
+            - generic [ref=e686]: 29 · 0 · 0
+          - generic [ref=e687]:
+            - generic "Libertés, Indépendants, Outre-mer et Territoires" [ref=e690]: LIOT
+            - 'img "LIOT : 19 pour, 0 contre, 0 abstentions" [ref=e691]'
+            - generic [ref=e693]: 19 · 0 · 0
+          - generic [ref=e694]:
+            - generic "Gauche Démocrate et Républicaine" [ref=e697]: GDR
+            - 'img "GDR : 0 pour, 11 contre, 0 abstentions" [ref=e698]'
+            - generic [ref=e700]: 0 · 11 · 0
+          - generic [ref=e701]:
+            - generic "Union des droites pour la République" [ref=e704]: UDR
+            - 'img "UDR : 14 pour, 0 contre, 0 abstentions" [ref=e705]'
+            - generic [ref=e707]: 14 · 0 · 0
+          - generic [ref=e708]:
+            - generic "Non-inscrits" [ref=e711]: NI
+            - 'img "NI : 3 pour, 0 contre, 0 abstentions" [ref=e712]'
+            - generic [ref=e714]: 3 · 0 · 0
+        - paragraph [ref=e715]: Pour · contre · abstention. La barre est proportionnelle aux votes exprimés dans le groupe.
+      - generic [ref=e716]:
+        - heading "Ils ont voté contre la position de leur groupe" [level=2] [ref=e717]
+        - list [ref=e718]:
+          - listitem [ref=e719]:
+            - link "Peio Dufau" [ref=e720] [cursor=pointer]:
+              - /url: /deputes/peio-dufau/
+            - text: (SOC) a voté abstention
+          - listitem [ref=e721]:
+            - link "Iñaki Echaniz" [ref=e722] [cursor=pointer]:
+              - /url: /deputes/inaki-echaniz/
+            - text: (SOC) a voté abstention
+  - contentinfo [ref=e723]:
+    - separator [ref=e724]
+    - generic [ref=e725]:
+      - paragraph [ref=e726]:
+        - text: Parlementeur est conçu et développé par
+        - link "Jean-Rémi Larcelet-Prost" [ref=e727] [cursor=pointer]:
+          - /url: https://github.com/jrlprost
+        - text: .
+      - paragraph [ref=e728]:
+        - text: Données publiques officielles, chaque chiffre renvoie à sa source. Aucun cookie, aucun traceur, aucune mesure d'audience. Code et données
+        - link "ouverts" [ref=e729] [cursor=pointer]:
+          - /url: https://github.com/jrlprost/parlementeur
+        - text: .
+        - link "Méthode et sources" [ref=e730] [cursor=pointer]:
+          - /url: /methode/
+        - text: ·
+        - link "Coulisses du pipeline" [ref=e731] [cursor=pointer]:
+          - /url: /coulisses/
+        - text: .

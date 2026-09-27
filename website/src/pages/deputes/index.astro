@@ -1,0 +1,90 @@
+---
+import Base from '../../layouts/Base.astro';
+import { load, fmtPct, fmtEur } from '../../lib/data';
+
+const { deputes, groupes, meta } = load();
+const gcol = new Map(groupes.map((g) => [g.sigle, g.couleur]));
+---
+<Base title="Les 577 députés" description="Tous les députés, triables par présence aux votes, discipline de groupe, âge ou revenus annexes déclarés." section="deputes">
+  <div class="stack" style="--gap:28px">
+    <header class="stack" style="--gap:12px">
+      <p class="kicker">Assemblée nationale · {meta.legislature}<sup>e</sup> législature</p>
+      <h1>Les {deputes.length} députés</h1>
+      <p class="lede">Cliquez sur une colonne pour trier. Chaque nom mène à une fiche détaillée et sourcée.</p>
+    </header>
+    <div class="tools">
+      <input id="filter" type="search" placeholder="Filtrer par nom, groupe ou département" autocomplete="off" />
+    </div>
+    <div class="scroll">
+      <table class="tbl" id="tbl">
+        <thead>
+          <tr>
+            <th data-k="nom" aria-sort="ascending"><button>Député</button></th>
+            <th data-k="groupe"><button>Groupe</button></th>
+            <th data-k="age" class="r"><button>Âge</button></th>
+            <th data-k="participation" class="r"><button>Présence</button></th>
+            <th data-k="loyaute" class="r"><button>Discipline</button></th>
+            <th data-k="revenus" class="r"><button>Revenus annexes</button></th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...deputes].sort((a, b) => a.nom.localeCompare(b.nom, 'fr')).map((d) => (
+            <tr data-nom={`${d.nom} ${d.prenom}`} data-groupe={d.groupe} data-age={d.age ?? ''} data-participation={d.participation ?? ''} data-loyaute={d.loyaute ?? ''} data-revenus={d.revenusAnnexes ?? ''} data-search={`${d.prenom} ${d.nom} ${d.groupe} ${d.circonscription ?? ''}`.toLowerCase()}>
+              <td><a href={`/deputes/${d.slug}/`}>{d.prenom} {d.nom}</a><span class="muted small circo">{d.circonscription}</span></td>
+              <td><i class="dot" style={`background:${gcol.get(d.groupe)}`}></i>{d.groupe}</td>
+              <td class="r num">{d.age ?? '–'}</td>
+              <td class="r num">{d.participation != null ? fmtPct(d.participation) : '–'}</td>
+              <td class="r num">{d.loyaute != null ? fmtPct(d.loyaute) : '–'}</td>
+              <td class="r num">{d.revenusAnnexes != null ? fmtEur(d.revenusAnnexes) : '–'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="src">Sources : <a href="https://data.assemblee-nationale.fr/">Assemblée nationale</a> (votes, mandats), <a href="https://www.hatvp.fr/open-data/">HATVP</a> (revenus annexes déclarés). <a href="/methode/">Méthode</a>.</p>
+  </div>
+</Base>
+
+<script>
+  const tbody = document.querySelector<HTMLTableSectionElement>('#tbl tbody')!;
+  const rows = [...tbody.rows];
+  document.querySelectorAll<HTMLTableCellElement>('#tbl th').forEach((th) => {
+    th.querySelector('button')!.addEventListener('click', () => {
+      const k = th.dataset.k!;
+      const asc = th.getAttribute('aria-sort') !== 'ascending';
+      document.querySelectorAll('#tbl th').forEach((x) => x.removeAttribute('aria-sort'));
+      th.setAttribute('aria-sort', asc ? 'ascending' : 'descending');
+      const num = !['nom', 'groupe'].includes(k);
+      rows.sort((a, b) => {
+        const x = a.dataset[k]!, y = b.dataset[k]!;
+        if (num) {
+          if (x === '') return 1;
+          if (y === '') return -1;
+          return (Number(x) - Number(y)) * (asc ? 1 : -1);
+        }
+        return x.localeCompare(y, 'fr') * (asc ? 1 : -1);
+      });
+      tbody.append(...rows);
+    });
+  });
+  const f = document.querySelector<HTMLInputElement>('#filter')!;
+  f.addEventListener('input', () => {
+    const q = f.value.trim().toLowerCase();
+    rows.forEach((r) => (r.hidden = !!q && !r.dataset.search!.includes(q)));
+  });
+</script>
+
+<style>
+  .tools input { font: inherit; padding: 10px 12px; border: 1px solid var(--ink-16); border-radius: 8px; background: var(--bg); color: var(--ink); width: 100%; max-width: 420px; }
+  .scroll { overflow-x: auto; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 0.92rem; min-width: 640px; }
+  .tbl th { text-align: left; border-bottom: 1px solid var(--ink-16); padding: 0; }
+  .tbl th button { background: none; border: 0; padding: 8px 0; font-size: 0.8rem; font-weight: 600; color: var(--ink-62); width: 100%; text-align: inherit; }
+  .tbl th[aria-sort] button { color: var(--ink); }
+  .tbl th[aria-sort='ascending'] button::after { content: ' ↑'; }
+  .tbl th[aria-sort='descending'] button::after { content: ' ↓'; }
+  .tbl td { border-bottom: 1px solid var(--ink-8); padding: 8px 0; vertical-align: top; }
+  .tbl .r { text-align: right; padding-left: 12px; }
+  .circo { display: block; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+</style>

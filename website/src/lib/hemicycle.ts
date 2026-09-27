@@ -38,14 +38,15 @@ export function layoutHemicycle(total: number, opts: { radius?: number; inner?: 
   radii.forEach((r, row) => {
     const n = counts[row];
     for (let j = 0; j < n; j++) {
-      const angle = n === 1 ? Math.PI / 2 : Math.PI - (Math.PI * j) / (n - 1);
+      // Décalage d'un demi-siège : les extrémités des rangs ne tombent pas toutes sur la même ligne.
+      const angle = Math.PI - (Math.PI * (j + 0.5)) / n;
       seats.push({ angle, row, x: cx + radius * r * Math.cos(angle), y: cy - radius * r * Math.sin(angle) });
     }
   });
   seats.sort((a, b) => b.angle - a.angle || a.row - b.row);
 
   const rowGap = rows > 1 ? (radius * (1 - inner)) / (rows - 1) : radius;
-  const arcGap = counts[0] > 1 ? (Math.PI * radius * inner) / (counts[0] - 1) : rowGap;
+  const arcGap = (Math.PI * radius * inner) / counts[0];
   const dot = Math.min(rowGap, arcGap) * 0.42;
   return { seats, radius, dot, width: 2 * cx, height: cy + pad + dot, cx, cy };
 }

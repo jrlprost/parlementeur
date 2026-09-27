@@ -1,0 +1,81 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link "Parlementeur" [ref=e3] [cursor=pointer]:
+      - /url: /
+    - navigation "Principale" [ref=e4]:
+      - link "Assemblée" [ref=e5] [cursor=pointer]:
+        - /url: /
+      - link "Scrutins" [ref=e6] [cursor=pointer]:
+        - /url: /scrutins/
+      - link "Députés" [ref=e7] [cursor=pointer]:
+        - /url: /deputes/
+      - link "Depuis 1958" [ref=e8] [cursor=pointer]:
+        - /url: /histoire/
+      - link "Méthode" [ref=e9] [cursor=pointer]:
+        - /url: /methode/
+    - button "Changer de thème" [ref=e10] [cursor=pointer]:
+      - img [ref=e11]
+  - main [ref=e14]:
+    - generic [ref=e15]:
+      - paragraph [ref=e16]:
+        - text: Assemblée nationale · 17
+        - superscript [ref=e17]: e
+        - text: législature · données au 27 septembre 2026
+      - heading "Qui déclare des revenus en plus de son mandat" [level=1] [ref=e18]
+      - paragraph [ref=e19]: Revenus déclarés à la HATVP pour les activités conservées pendant le mandat et les autres mandats électifs, sur la dernière année renseignée. L'indemnité de député n'est pas comptée. Pâle = aucun revenu déclaré.
+      - generic [ref=e20]:
+        - toolbar "Thématique" [ref=e21]:
+          - generic [ref=e22]:
+            - link "Groupes" [ref=e23] [cursor=pointer]:
+              - /url: /
+            - link "Âge" [ref=e24] [cursor=pointer]:
+              - /url: /vue/age/
+            - link "Femmes" [ref=e25] [cursor=pointer]:
+              - /url: /vue/femmes/
+            - link "Présence aux votes" [ref=e26] [cursor=pointer]:
+              - /url: /vue/participation/
+            - link "Votes solennels" [ref=e27] [cursor=pointer]:
+              - /url: /vue/solennels/
+            - link "Discipline" [ref=e28] [cursor=pointer]:
+              - /url: /vue/loyaute/
+            - link "Ancienneté" [ref=e29] [cursor=pointer]:
+              - /url: /vue/anciennete/
+            - link "Revenus annexes" [ref=e30] [cursor=pointer]:
+              - /url: /vue/revenus/
+        - figure "0 € 200 000 € et plus" [ref=e32]:
+          - 'img "Hémicycle de 577 sièges : Qui déclare des revenus en plus de son mandat" [ref=e33]':
+            - generic [ref=e611]: "577"
+            - generic [ref=e612]: députés
+          - generic [ref=e616]:
+            - generic [ref=e617]: 0 €
+            - generic [ref=e618]: 200 000 € et plus
+        - generic [ref=e619]:
+          - generic [ref=e620]: Trouver un député par nom ou département
+          - combobox "Trouver un député par nom ou département" [ref=e621]
+      - paragraph [ref=e622]:
+        - text: "Source :"
+        - link "HATVP, déclarations d'intérêts" [ref=e623] [cursor=pointer]:
+          - /url: https://www.hatvp.fr/open-data/
+        - text: . Cliquez sur un siège pour ouvrir la fiche du député.
+        - link "Comment ces chiffres sont calculés" [ref=e624] [cursor=pointer]:
+          - /url: /methode/
+        - text: .
+  - contentinfo [ref=e625]:
+    - separator [ref=e626]
+    - generic [ref=e627]:
+      - paragraph [ref=e628]:
+        - text: Parlementeur est conçu et développé par
+        - link "Jean-Rémi Larcelet-Prost" [ref=e629] [cursor=pointer]:
+          - /url: https://github.com/jrlprost
+        - text: .
+      - paragraph [ref=e630]:
+        - text: Données publiques officielles, chaque chiffre renvoie à sa source. Aucun cookie, aucun traceur, aucune mesure d'audience. Code et données
+        - link "ouverts" [ref=e631] [cursor=pointer]:
+          - /url: https://github.com/jrlprost/parlementeur
+        - text: .
+        - link "Méthode et sources" [ref=e632] [cursor=pointer]:
+          - /url: /methode/
+        - text: ·
+        - link "Coulisses du pipeline" [ref=e633] [cursor=pointer]:
+          - /url: /coulisses/
+        - text: .

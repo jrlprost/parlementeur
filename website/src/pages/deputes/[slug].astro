@@ -1,0 +1,157 @@
+---
+import Base from '../../layouts/Base.astro';
+import HemicycleStatic from '../../components/HemicycleStatic.astro';
+import { load, readOptional, fmtDate, fmtEur, fmtPct, type DeputeDetail } from '../../lib/data';
+
+export function getStaticPaths() {
+  return load().deputes.map((d) => ({ params: { slug: d.slug } }));
+}
+
+const { deputes, groupes, meta } = load();
+const d = deputes.find((x) => x.slug === Astro.params.slug)!;
+const det = readOptional<DeputeDetail>(`deputes/${d.slug}.json`);
+const g = groupes.find((x) => x.sigle === d.groupe);
+const idx = deputes.indexOf(d);
+const fills = deputes.map((x) => (x.groupe === d.groupe ? `color-mix(in srgb, ${g?.couleur ?? '#9A9A9A'} 45%, var(--bg))` : 'var(--ink-8)'));
+fills[idx] = g?.couleur ?? 'var(--ink)';
+
+const nom = `${d.prenom} ${d.nom}`;
+const VOTE_LBL: Record<string, string> = { pour: 'Pour', contre: 'Contre', abstention: 'Abstention', absent: 'Absent' };
+const lastAmount = (m: { annee: number; montant: number }[]) => [...m].sort((a, b) => b.annee - a.annee)[0];
+const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d.groupe}${d.circonscription ? ', ' + d.circonscription : ''}. Présence aux votes, discipline de groupe, intérêts déclarés, parcours.`;
+---
+<Base title={nom} description={description} og={`/og/depute-${d.slug}.png`} section="deputes">
+  <article class="fiche stack" style="--gap:40px">
+    <header class="head">
+      <div class="stack" style="--gap:10px">
+        <p class="kicker"><span class="dot" style={`background:${g?.couleur}`}></span>{g?.nom ?? d.groupe}</p>
+        <h1>{nom}</h1>
+        <p class="lede">
+          {d.femme ? 'Députée' : 'Député'}{d.circonscription ? ` de la ${d.circonscription}` : ''}{d.age != null ? `, ${d.age} ans` : ''}{d.profession ? `. ${d.profession}` : ''}.
+        </p>
+      </div>
+      {d.photo && <img class="photo" src={d.photo} alt={`Portrait officiel de ${nom}`} width="120" height="150" loading="lazy" />}
+    </header>
+
+    <section class="kpis">
+      <div><b class="num">{d.participation != null ? fmtPct(d.participation) : '–'}</b><span>des scrutins votés</span></div>
+      <div><b class="num">{d.loyaute != null ? fmtPct(d.loyaute) : '–'}</b><span>de votes alignés sur son groupe</span></div>
+      <div><b class="num">{d.legislatures ?? '–'}</b><span>{d.legislatures === 1 ? 'premier mandat' : 'législatures effectuées'}</span></div>
+      <div><b class="num">{d.revenusAnnexes != null ? fmtEur(d.revenusAnnexes) : '–'}</b><span>de revenus annexes déclarés (dernière année)</span></div>
+    </section>
+
+    <section class="stack" style="--gap:12px">
+      <h2>Sa place dans l'hémicycle</h2>
+      <HemicycleStatic fills={fills} highlight={idx} label={`Position de ${nom} dans l'hémicycle`} />
+      <p class="src">Source : <a href={d.urlAN}>fiche officielle de l'Assemblée nationale</a>.</p>
+    </section>
+
+    {det?.votesCles?.length ? (
+      <section class="stack" style="--gap:12px">
+        <h2>Ses votes sur les scrutins marquants</h2>
+        <ul class="votes">
+          {det.votesCles.map((v) => (
+            <li>
+              <span class={`vote v-${v.vote}`}>{VOTE_LBL[v.vote]}</span>
+              <a href={`/scrutins/${v.numero}/`}>{v.titre}</a>
+              <span class="muted small num">{fmtDate(v.date)}{v.ligneGroupe && v.vote !== 'absent' && v.ligneGroupe !== v.vote ? ' · contre la ligne de son groupe' : ''}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : null}
+
+    <section class="stack" style="--gap:12px">
+      <h2>Intérêts et activités déclarés</h2>
+      {det?.interets ? (
+        <div class="stack" style="--gap:16px">
+          <p class="muted">Déclaration d'intérêts et d'activités déposée auprès de la HATVP le {fmtDate(det.interets.date)}.</p>
+          {det.interets.activites.length > 0 && (
+            <table class="tbl">
+              <caption class="sr-only">Activités professionnelles déclarées</caption>
+              <thead><tr><th>Activité déclarée</th><th class="r">Dernier montant</th></tr></thead>
+              <tbody>
+                {det.interets.activites.map((a) => { const m = lastAmount(a.montants); return (
+                  <tr><td>{a.description}{a.employeur ? <span class="muted"> · {a.employeur}</span> : null}</td><td class="r num">{m ? `${fmtEur(m.montant)} (${m.annee})` : '–'}</td></tr>
+                ); })}
+              </tbody>
+            </table>
+          )}
+          {det.interets.participations.length > 0 && (
+            <table class="tbl">
+              <caption class="sr-only">Participations financières déclarées</caption>
+              <thead><tr><th>Participation au capital d'une société</th><th class="r">Évaluation déclarée</th></tr></thead>
+              <tbody>
+                {det.interets.participations.map((p) => (
+                  <tr><td>{p.societe}{p.parts ? <span class="muted"> · {p.parts}</span> : null}</td><td class="r num">{p.evaluation != null ? fmtEur(p.evaluation) : '–'}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {det.interets.conjoint && <p><span class="muted">Activité du conjoint déclarée :</span> {det.interets.conjoint}</p>}
+          <p class="src">Source : <a href={det.interets.url}>déclaration publiée par la HATVP</a>. Le patrimoine des parlementaires n'est pas publiable (article LO 135-2 du code électoral) : <a href="/methode/#patrimoine">pourquoi il n'apparaît pas ici</a>.</p>
+        </div>
+      ) : (
+        <p class="muted">Aucune déclaration d'intérêts publiée par la HATVP n'a été rapprochée de ce député.</p>
+      )}
+    </section>
+
+    <section class="stack" style="--gap:12px">
+      <h2>Condamnations définitives</h2>
+      {det?.condamnations?.length ? (
+        <ul class="plain">
+          {det.condamnations.map((c) => (
+            <li><b>{fmtDate(c.date)}</b>, {c.juridiction} : {c.faits}. Peine : {c.peine}. <a href={c.source.url}>{c.source.label}</a></li>
+          ))}
+        </ul>
+      ) : (
+        <p class="muted">Aucune condamnation définitive recensée. Seules les condamnations définitives, documentées par une source primaire, sont publiées : <a href="/methode/#condamnations">notre règle</a>.</p>
+      )}
+    </section>
+
+    {det && (det.mandats.length > 0 || det.groupesHistorique.length > 1) && (
+      <section class="stack" style="--gap:12px">
+        <h2>Parcours</h2>
+        <ul class="plain">
+          {det.mandats.map((m) => <li><b>{m.legislature}<sup>e</sup> législature</b> · {fmtDate(m.debut)} – {m.fin ? fmtDate(m.fin) : "aujourd'hui"}{m.circonscription ? ` · ${m.circonscription}` : ''}</li>)}
+        </ul>
+        {det.groupesHistorique.length > 1 && (
+          <p>Groupes successifs : {det.groupesHistorique.map((h) => `${h.nom} (${h.sigle}) depuis le ${fmtDate(h.debut)}`).join(' ; ')}.</p>
+        )}
+      </section>
+    )}
+
+    <section class="stack" style="--gap:8px">
+      <h2>Sources</h2>
+      <ul class="plain src">
+        <li><a href={d.urlAN}>Fiche du député, Assemblée nationale</a></li>
+        {d.urlHATVP && <li><a href={d.urlHATVP}>Déclarations publiées, HATVP</a></li>}
+        {det?.sources?.map((s) => <li><a href={s.url}>{s.label}</a>{s.date ? `, consulté le ${fmtDate(s.date)}` : ''}</li>)}
+        <li>Données extraites le {fmtDate(meta.generatedAt)}.</li>
+      </ul>
+    </section>
+  </article>
+</Base>
+
+<style>
+  .head { display: flex; gap: 24px; justify-content: space-between; align-items: flex-start; }
+  .photo { border-radius: 4px; width: 104px; height: auto; flex: none; filter: grayscale(0.15); }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: 0; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+  .kpis div { border-top: 2px solid var(--ink); padding-top: 10px; display: grid; gap: 2px; }
+  .kpis b { font-family: var(--serif); font-size: 2rem; font-weight: 600; line-height: 1.1; }
+  .kpis span { font-size: 0.85rem; color: var(--ink-62); }
+  .votes { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .votes li { display: grid; grid-template-columns: 96px 1fr; gap: 2px 12px; align-items: baseline; }
+  .votes li > .small { grid-column: 2; }
+  .vote { font-size: 0.8rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; text-align: center; color: #fff; }
+  .v-pour { background: var(--vote-pour); }
+  .v-contre { background: var(--vote-contre); }
+  .v-abstention { background: var(--vote-abstention); }
+  .v-absent { background: var(--ink-8); color: var(--ink-62); }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+  .tbl th { text-align: left; font-weight: 600; font-size: 0.8rem; color: var(--ink-62); border-bottom: 1px solid var(--ink-16); padding: 6px 0; }
+  .tbl td { border-bottom: 1px solid var(--ink-8); padding: 8px 0; vertical-align: top; }
+  .tbl .r { text-align: right; padding-left: 16px; white-space: nowrap; }
+  .plain { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+</style>
