@@ -46,6 +46,7 @@ def load(organe_names: dict[str, str], scrutins: list[dict], deputy_ids: set[str
             votes_by_seance[s["seanceRef"]] += 1
 
     events = []
+    auditions = []
     presence: dict[str, dict] = {i: {"convocations": 0, "presents": 0, "excuses": 0, "absents": 0, "minutes": 0} for i in deputy_ids}
     # Par mois : [convocations, présences, minutes de présence] en commission, pour filtrer par période.
     monthly: dict[str, dict[str, list[int]]] = {i: {} for i in deputy_ids}
@@ -84,6 +85,16 @@ def load(organe_names: dict[str, str], scrutins: list[dict], deputy_ids: set[str
                 else:
                     st["absents"] += 1
         organe = organe_names.get(r.get("organeReuniRef") or "", "")
+        objets = _objets(r)
+        if kind == "commission" and any("audition" in o.lower() for o in objets):
+            auditions.append(
+                {
+                    "date": debut.date().isoformat(),
+                    "organe": organe,
+                    "texte": " · ".join(o for o in objets if "audition" in o.lower())[:900],
+                    "presents": [p.get("acteurRef") for p in parts if p and p.get("presence") == "présent"],
+                }
+            )
         reel = (reels or {}).get(r["uid"]) if kind == "seance" else None
         # Séance passée sans compte rendu, sans vote et sans heure de fin : prévue mais jamais tenue.
         if kind == "seance" and reels and not reel and not votes_by_seance.get(r["uid"]) and minutes is None and debut.date() < datetime.now(debut.tzinfo).date() - timedelta(days=10):
@@ -108,4 +119,4 @@ def load(organe_names: dict[str, str], scrutins: list[dict], deputy_ids: set[str
     # Index des séances publiques par identifiant, pour calculer la présence en séance de chaque député.
     seance_index = {e.pop("_uid"): e for e in events if "_uid" in e}
     log(f"agenda : {len(events)} réunions ({sum(1 for e in events if e['t'] == 'seance')} séances publiques)")
-    return events, presence, monthly, seance_index
+    return events, presence, monthly, seance_index, auditions

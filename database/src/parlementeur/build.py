@@ -8,7 +8,7 @@ import shutil
 import duckdb
 import httpx
 
-from . import agenda, an, comptes_rendus, elections, hatvp, lobbying, wikidata
+from . import agenda, an, auditions, comptes_rendus, elections, hatvp, lobbying, wikidata
 import time
 from contextlib import contextmanager
 
@@ -128,7 +128,7 @@ def main() -> None:
         scrutins = an.load_scrutins()
     with step("Agenda : séances et réunions de commission (Assemblée nationale)"):
         reels = comptes_rendus.load()
-        events, presence, monthly, seance_index = agenda.load(an.load_organe_names(), scrutins, ids, reels)
+        events, presence, monthly, seance_index, com_auditions = agenda.load(an.load_organe_names(), scrutins, ids, reels)
         # Nombre de paragraphes prononcés par chaque député en séance publique.
         interventions_by_id: dict[str, int] = {}
         for cr in reels.values():
@@ -150,6 +150,16 @@ def main() -> None:
         leg = elections.load(deputes)
     with step("Répertoire des représentants d'intérêts (HATVP)"):
         lobby = lobbying.load()
+    with step("Rencontres : auditions des rapporteurs et des commissions, amendements identiques"):
+        reg = auditions.registry_index(RAW / "hatvp_agora.json")
+        rap_rows = auditions.report_auditions()
+        for r in rap_rows:
+            hits = auditions.find_registered(f"{r.get('organisation') or ''} {r.get('detail') or ''}", reg)
+            r["registre"] = hits
+        for a in com_auditions:
+            a["registre"] = auditions.find_registered(a["texte"], reg)
+        auditions.drop_generic(rap_rows + com_auditions)
+        amdt_clusters = auditions.identical_amendments()
     with step("Portraits officiels"):
         download_photos(deputes)
 
@@ -184,6 +194,32 @@ def main() -> None:
 
     # Scrutins marquants : votes solennels et motions de censure.
     marquants = [s for s in scrutins if s["solennel"] or s["motion"]]
+
+    # Rencontres documentées de chaque député : organisations auditionnées comme rapporteur,
+    # auditions en commission auxquelles il était présent, amendements identiques à ceux d'autres groupes.
+    def rencontres_de(pa: str) -> dict:
+        rap = [r for r in rap_rows if pa in r["rapporteurs"]]
+        orgs: dict[str, dict] = {}
+        for r in rap:
+            key = r.get("organisation") or r.get("detail") or ""
+            o = orgs.setdefault(key, {"organisation": key, "registre": set(), "etoile": False, "rapports": {}})
+            o["registre"].update(r.get("registre") or [])
+            o["etoile"] = o["etoile"] or bool(r.get("etoile"))
+            o["rapports"][r["rapport"]] = {"titre": r["titre"], "url": r["url"]}
+        com = [a for a in com_auditions if pa in a["presents"]]
+        amd = [c for c in amdt_clusters if pa in c["deputes"]]
+        return {
+            "rapporteur": sorted(
+                ({"organisation": o["organisation"], "registre": sorted(o["registre"]), "etoile": o["etoile"], "rapports": list(o["rapports"].values())} for o in orgs.values()),
+                key=lambda o: (not (o["registre"] or o["etoile"]), o["organisation"]),
+            ),
+            "commissions": {
+                "total": len(com),
+                "avecLobby": [{"date": a["date"], "organe": a["organe"], "texte": a["texte"][:300], "registre": a["registre"]} for a in sorted(com, key=lambda a: a["date"], reverse=True) if a["registre"]][:40],
+            },
+            "amendements": [{"texte": c["texte"][:300], "n": len(c["deputes"]), "groupes": len(c["groupes"]), "exemple": c["exemple"]} for c in amd][:30],
+            "amendementsTotal": len(amd),
+        }
 
     out_deputes = []
     for d in deputes:
@@ -271,6 +307,7 @@ def main() -> None:
             ],
             "elections": [leg[d["id"]]] if d["id"] in leg else [],
             "sources": [],
+            "rencontres": rencontres_de(d["id"]),
         }
         write_json(DIST / "deputes" / f"{d['slug']}.json", detail)
 
@@ -296,6 +333,26 @@ def main() -> None:
         )
     write_json(DIST / "scrutins.json", index)
     write_json(DIST / "lobbying.json", lobby)
+    slug_by_id = {d["id"]: d["slug"] for d in deputes}
+    grp_sigle = {**{g["ref"]: g["sigle"] for g in groupes if g["ref"]}, **{k: v["sigle"] for k, v in an.load_all_groups().items()}}
+    write_json(
+        DIST / "rencontres.json",
+        {
+            "couverture": auditions.report_auditions.couverture,
+            "rapports": [
+                {**{k: r.get(k) for k in ("rapport", "titre", "date", "url", "organisation", "detail", "etoile", "registre", "type")}, "rapporteurs": [slug_by_id[x] for x in r["rapporteurs"] if x in slug_by_id]}
+                for r in rap_rows
+            ],
+            "commissions": [
+                {"date": a["date"], "organe": a["organe"], "texte": a["texte"], "registre": a["registre"], "presents": [slug_by_id[x] for x in a["presents"] if x in slug_by_id]}
+                for a in com_auditions
+            ],
+            "amendements": [
+                {**{k: c[k] for k in ("id", "texte", "n", "adoptes", "exemple")}, "deputes": [slug_by_id[x] for x in c["deputes"] if x in slug_by_id], "groupes": sorted({grp_sigle.get(g, "?") for g in c["groupes"]})}
+                for c in amdt_clusters
+            ],
+        },
+    )
     write_json(DIST / "agenda.json", events)
     # Travail par député et par mois : commissions (convocations, présences, minutes), jours de vote,
     # et minutes de séance publique où le député a voté ou siégé (durée réelle, suspensions déduites).
