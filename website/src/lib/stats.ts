@@ -17,7 +17,7 @@ export function fillHex(viewId: string, d: Depute, groupes: Groupe[]): string {
   const x = v.value!(d);
   const ghost = mix(THEME.light.bg, THEME.light.ink, 0.08);
   if (x == null) return ghost;
-  if (v.kind === 'binaire') return x ? RAMP.light.to : mix(THEME.light.bg, THEME.light.ink, 0.16);
+  if (v.kind === 'binaire') return x ? RAMP.light.to : mix(THEME.light.bg, THEME.light.ink, 0.62);
   return mix(RAMP.light.from, RAMP.light.to, x as number);
 }
 
@@ -29,9 +29,9 @@ export function headline(viewId: string, deputes: Depute[], groupes: Groupe[]): 
       const m = median(deputes.map((d) => d.age!).filter((x) => x != null));
       return { big: `${Math.round(m ?? 0)} ans`, label: "d'âge médian dans l'hémicycle" };
     }
-    case 'femmes': {
+    case 'sexe': {
       const f = deputes.filter((d) => d.femme).length;
-      return { big: `${Math.round((f / n) * 100)} %`, label: `de femmes, soit ${f} députées sur ${n}` };
+      return { big: `${f} / ${n - f}`, label: `${f} femmes et ${n - f} hommes siègent à l'Assemblée` };
     }
     case 'participation': {
       const xs = deputes.map((d) => d.participation).filter((x): x is number => x != null);
