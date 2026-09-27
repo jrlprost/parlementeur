@@ -172,6 +172,8 @@ if (plan) {
       if (push) history.pushState({}, '', baseUrl);
     }
     const svgEl = block.querySelector<SVGSVGElement>('svg.hemi')!;
+    // Sur mobile, la thématique active est ramenée dans la zone visible de la barre.
+    block.querySelector('.views [aria-pressed="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
     block.querySelectorAll<HTMLButtonElement>('.layout-toggle button').forEach((btn) =>
       btn.addEventListener('click', () => {
         const reel = btn.dataset.layout === 'reel';
@@ -199,8 +201,10 @@ if (plan) {
 
 <style>
   .hemi-block { display: grid; gap: 16px; }
-  .views { view-transition-name: views; overflow-x: auto; display: flex; justify-content: center; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
+  .views { view-transition-name: views; overflow-x: auto; display: flex; justify-content: safe center; position: sticky; top: 0; z-index: 15; background: var(--bg); padding-block: 8px; scrollbar-width: none; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
   .views .seg { flex-wrap: nowrap; white-space: nowrap; }
+  .views::-webkit-scrollbar { display: none; }
+  @media (max-width: 760px) { .views { top: 56px; } }
   .hemi-grid { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); }
   .hemi-fig { margin: 0; display: grid; gap: 12px; justify-items: center; }
   .hemi-fig .legend { justify-self: stretch; max-width: 900px; margin-inline: auto; width: 100%; }

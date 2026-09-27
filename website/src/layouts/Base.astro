@@ -60,6 +60,21 @@ const nav = [
         <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 2.5a7.5 7.5 0 0 1 0 15z" fill="currentColor"/></svg>
       </button>
     </header>
+    <nav class="tabbar" aria-label="Navigation">
+      <a href="/" aria-current={section === 'assemblee' ? 'page' : undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18a9 9 0 0 1 18 0" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7.5 18a4.5 4.5 0 0 1 9 0" fill="none" stroke="currentColor" stroke-width="2"/></svg>Assemblée</a>
+      <a href="/agenda/" aria-current={section === 'agenda' ? 'page' : undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 10h16M9 3v4M15 3v4" stroke="currentColor" stroke-width="2"/></svg>Agenda</a>
+      <a href="/scrutins/" aria-current={section === 'scrutins' ? 'page' : undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>Scrutins</a>
+      <a href="/deputes/" aria-current={section === 'deputes' ? 'page' : undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 20a7 7 0 0 1 14 0" fill="none" stroke="currentColor" stroke-width="2"/></svg>Députés</a>
+      <details class="more">
+        <summary aria-current={['lobbying', 'histoire', 'methode'].includes(section ?? '') ? 'page' : undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/></svg>Plus</summary>
+        <div class="sheet">
+          <a href="/lobbying/">Lobbying</a>
+          <a href="/histoire/">L'hémicycle depuis 1958</a>
+          <a href="/methode/">Méthode et sources</a>
+          <a href="/coulisses/">Coulisses du pipeline</a>
+        </div>
+      </details>
+    </nav>
     <main class="wrap">
       <slot />
     </main>
@@ -98,7 +113,25 @@ const nav = [
       .theme { background: none; border: 1px solid var(--ink-16); border-radius: 50%; width: 36px; height: 36px; display: grid; place-items: center; }
       .site-foot { margin-top: 80px; padding-bottom: 40px; }
       .foot-grid { display: grid; gap: 8px; padding-top: 20px; }
-      @media (max-width: 640px) { nav { order: 3; flex-basis: 100%; overflow-x: auto; flex-wrap: nowrap; white-space: nowrap; } }
+      .tabbar { display: none; }
+      @media (max-width: 760px) {
+        .site-head { margin-bottom: 18px; padding-block: 10px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 25; background: var(--bg); }
+        .site-head nav { display: none; }
+        .site-head :global(.search) { margin-left: auto; }
+        .tabbar {
+          display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+          background: var(--bg); border-top: 1px solid var(--ink-16);
+          padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+        }
+        .tabbar > a, .tabbar summary { display: grid; justify-items: center; gap: 2px; font-size: 0.68rem; text-decoration: none; color: var(--ink-62); list-style: none; cursor: pointer; padding: 2px 0; }
+        .tabbar summary::-webkit-details-marker { display: none; }
+        .tabbar svg { width: 22px; height: 22px; }
+        .tabbar [aria-current='page'] { color: var(--ink); font-weight: 700; }
+        .tabbar .sheet { position: absolute; right: 8px; bottom: calc(100% + 8px); background: var(--bg); border: 1px solid var(--ink-16); border-radius: 12px; padding: 6px; display: grid; min-width: 220px; box-shadow: 0 10px 30px color-mix(in srgb, var(--ink) 18%, transparent); }
+        .tabbar .sheet a { padding: 10px 12px; text-decoration: none; border-radius: 8px; }
+        .tabbar .sheet a:hover { background: var(--ink-4); }
+        .site-foot { padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+      }
     </style>
   </body>
 </html>
