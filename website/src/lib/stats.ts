@@ -48,6 +48,11 @@ export function headline(viewId: string, deputes: Depute[], groupes: Groupe[]): 
       const m = median(xs);
       return { big: `${Math.round((m ?? 0) * 100)} %`, label: 'des votes suivent la ligne du groupe (médiane)' };
     }
+    case 'amendements': {
+      const tot = deputes.reduce((a, d) => a + d.amendements, 0);
+      const ad = deputes.reduce((a, d) => a + d.amendementsAdoptes, 0);
+      return { big: tot.toLocaleString('fr-FR'), label: `amendements déposés par les députés, dont ${Math.round((ad / tot) * 100)} % adoptés` };
+    }
     case 'anciennete': {
       const first = deputes.filter((d) => d.legislatures === 1).length;
       return { big: `${first}`, label: `députés sur ${n} effectuent leur premier mandat` };

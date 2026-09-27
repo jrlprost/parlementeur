@@ -80,6 +80,16 @@ export const VIEWS: View[] = [
     source: AN,
   },
   {
+    id: 'amendements',
+    label: 'Amendements',
+    titre: 'Qui propose de changer les textes',
+    intro: "Nombre d'amendements déposés en premier signataire, en séance et en commission, depuis le début de la législature.",
+    kind: 'rampe',
+    value: (d) => clamp(Math.log10(1 + d.amendements) / Math.log10(1001)),
+    legende: ['0', '1 000 et plus'],
+    source: AN,
+  },
+  {
     id: 'anciennete',
     label: 'Ancienneté',
     titre: 'Nouveaux venus et vétérans',

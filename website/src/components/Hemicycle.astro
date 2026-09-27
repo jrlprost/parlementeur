@@ -47,6 +47,7 @@ const people = deputes.map((d) => ({
   l: d.loyaute == null ? null : fmtPct(d.loyaute),
   m: d.legislatures,
   r: d.revenusAnnexes == null ? null : fmtEur(d.revenusAnnexes),
+  am: d.amendements,
   ph: d.photo,
 }));
 const groupNames = Object.fromEntries(groupes.map((g) => [g.sigle, g.nom]));
@@ -110,7 +111,7 @@ const groupNames = Object.fromEntries(groupes.map((g) => [g.sigle, g.nom]));
 </section>
 
 <script>
-  type Person = { s: string; n: string; g: string; c: string | null; a: number | null; f: boolean; p: string | null; l: string | null; m: number | null; r: string | null; ph: string | null };
+  type Person = { s: string; n: string; g: string; c: string | null; a: number | null; f: boolean; p: string | null; l: string | null; m: number | null; r: string | null; am: number; ph: string | null };
   type ViewLite = { id: string; titre: string; intro: string; kind: string; legende?: [string, string] };
 
   for (const block of document.querySelectorAll<HTMLElement>('.hemi-block')) {
@@ -143,6 +144,7 @@ const groupNames = Object.fromEntries(groupes.map((g) => [g.sigle, g.nom]));
         ['Présence aux votes', p.p],
         ['Vote avec son groupe', p.l],
         ['Législatures', p.m == null ? null : String(p.m)],
+        ['Amendements déposés', String(p.am)],
         ['Revenus annexes déclarés', p.r],
       ];
       body.innerHTML = `

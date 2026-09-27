@@ -23,6 +23,9 @@ export type Depute = {
   participationSolennels: number | null;
   loyaute: number | null;
   votes: number | null;
+  amendements: number;
+  amendementsAdoptes: number;
+  questions: number;
   revenusAnnexes: number | null;
   anneeRevenus: number | null;
   fonction: string | null;
@@ -97,8 +100,7 @@ export type DeputeDetail = Depute & {
   } | null;
   votesCles: { numero: number; date: string; titre: string; vote: VoteCode; ligneGroupe: VoteCode | null }[];
   dissidences: number | null;
-  amendements: { deposes: number; adoptes: number } | null;
-  questions: number | null;
+  questionsRepondues: number;
   condamnations: { date: string; juridiction: string; faits: string; peine: string; source: Source }[];
   presidentielles: { annee: number; tour1: number | null }[];
   elections: { annee: number; scrutin: string; circonscription: string; resultat: string; pct: number | null }[];

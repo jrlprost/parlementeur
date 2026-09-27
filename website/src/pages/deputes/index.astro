@@ -24,17 +24,19 @@ const gcol = new Map(groupes.map((g) => [g.sigle, g.couleur]));
             <th data-k="age" class="r"><button>Âge</button></th>
             <th data-k="participation" class="r"><button>Présence</button></th>
             <th data-k="loyaute" class="r"><button>Discipline</button></th>
+            <th data-k="amendements" class="r"><button>Amendements</button></th>
             <th data-k="revenus" class="r"><button>Revenus annexes</button></th>
           </tr>
         </thead>
         <tbody>
           {[...deputes].sort((a, b) => a.nom.localeCompare(b.nom, 'fr')).map((d) => (
-            <tr data-nom={`${d.nom} ${d.prenom}`} data-groupe={d.groupe} data-age={d.age ?? ''} data-participation={d.participation ?? ''} data-loyaute={d.loyaute ?? ''} data-revenus={d.revenusAnnexes ?? ''} data-search={`${d.prenom} ${d.nom} ${d.groupe} ${d.circonscription ?? ''}`.toLowerCase()}>
+            <tr data-nom={`${d.nom} ${d.prenom}`} data-groupe={d.groupe} data-age={d.age ?? ''} data-participation={d.participation ?? ''} data-loyaute={d.loyaute ?? ''} data-revenus={d.revenusAnnexes ?? ''} data-amendements={d.amendements} data-search={`${d.prenom} ${d.nom} ${d.groupe} ${d.circonscription ?? ''}`.toLowerCase()}>
               <td><a href={`/deputes/${d.slug}/`}>{d.prenom} {d.nom}</a><span class="muted small circo">{d.circonscription}</span></td>
               <td><i class="dot" style={`background:${gcol.get(d.groupe)}`}></i>{d.groupe}</td>
               <td class="r num">{d.age ?? '–'}</td>
               <td class="r num">{d.participation != null ? fmtPct(d.participation) : '–'}</td>
               <td class="r num">{d.loyaute != null ? fmtPct(d.loyaute) : '–'}</td>
+              <td class="r num">{d.amendements}</td>
               <td class="r num">{d.revenusAnnexes != null ? fmtEur(d.revenusAnnexes) : '–'}</td>
             </tr>
           ))}

@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import HemicycleStatic from '../../components/HemicycleStatic.astro';
-import { load, readOptional, fmtDate, fmtEur, fmtPct, type DeputeDetail } from '../../lib/data';
+import { load, readOptional, fmtDate, fmtEur, fmtPct, fmtInt, type DeputeDetail } from '../../lib/data';
 
 export function getStaticPaths() {
   return load().deputes.map((d) => ({ params: { slug: d.slug } }));
@@ -37,8 +37,13 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
       <div><b class="num">{d.participation != null ? fmtPct(d.participation) : '–'}</b><span>des scrutins votés</span></div>
       <div><b class="num">{d.loyaute != null ? fmtPct(d.loyaute) : '–'}</b><span>de votes alignés sur son groupe</span></div>
       <div><b class="num">{d.legislatures ?? '–'}</b><span>{d.legislatures === 1 ? 'premier mandat' : 'législatures effectuées'}</span></div>
-      <div><b class="num">{d.revenusAnnexes != null ? fmtEur(d.revenusAnnexes) : '–'}</b><span>de revenus annexes déclarés (dernière année)</span></div>
+      <div><b class="num">{d.revenusAnnexes != null ? fmtEur(d.revenusAnnexes) : '–'}</b><span>de revenus annexes déclarés{d.anneeRevenus ? ` (${d.anneeRevenus})` : ''}</span></div>
+      <div><b class="num">{fmtInt(d.amendements)}</b><span>amendements déposés, dont {fmtInt(d.amendementsAdoptes)} adoptés</span></div>
+      <div><b class="num">{fmtInt(d.questions)}</b><span>questions écrites au gouvernement{det ? `, ${fmtInt(det.questionsRepondues)} avec réponse` : ''}</span></div>
+      <div><b class="num">{d.participationSolennels != null ? fmtPct(d.participationSolennels) : '–'}</b><span>des votes solennels</span></div>
+      <div><b class="num">{det?.dissidences != null ? fmtInt(det.dissidences) : '–'}</b><span>votes contre la ligne de son groupe</span></div>
     </section>
+    {d.fonction && <p class="muted">{d.fonction}{d.fonction.startsWith('Présidente') || d.fonction.startsWith('Président') ? " : préside les séances et ne prend pas part aux votes, d'où l'absence de taux de présence." : '.'}</p>}
 
     <section class="stack" style="--gap:12px">
       <h2>Sa place dans l'hémicycle</h2>
