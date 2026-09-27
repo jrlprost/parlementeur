@@ -63,13 +63,13 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
       <button type="button" id="more" class="more">Voir tous les députés</button>
     </section>
 
-    <p class="src">Source : <a href="https://data.assemblee-nationale.fr/reunions/reunions">Assemblée nationale, agenda des réunions (open data)</a>, et scrutins publics. Les horaires sont ceux publiés à l'agenda ; la durée réelle d'une séance peut s'en écarter.</p>
+    <p class="src">Sources : <a href="https://data.assemblee-nationale.fr/reunions/reunions">Assemblée nationale, agenda des réunions</a>, <a href="https://data.assemblee-nationale.fr/travaux-parlementaires/debats">comptes rendus des séances</a> et scrutins publics. Les séances publiques sont placées à leurs heures réelles d'ouverture et de levée, lues dans le compte rendu officiel ; les réunions de commission, à leurs horaires annoncés.</p>
   </div>
   <script type="application/json" id="who" set:html={JSON.stringify(who)}></script>
 </Base>
 
 <script>
-  type Ev = { t: 'seance' | 'commission' | 'autre'; d: string; m: number | null; o: string; x: string; v: number; p: number | null; c: number | null; e: string | null };
+  type Ev = { t: 'seance' | 'commission' | 'autre'; d: string; m: number | null; o: string; x: string; v: number; p: number | null; c: number | null; e: string | null; ro?: string; rm?: number; rs?: number };
   type Travail = { mois: string[]; deputes: Record<string, number[][]> };
 
   const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
@@ -87,8 +87,8 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
   const mondayOf = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
   const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 
-  let events: (Ev & { start: Date; end: Date })[] = [];
-  let byDay = new Map<string, (Ev & { start: Date; end: Date })[]>();
+  let events: (Ev & { start: Date; end: Date; planned: Date })[] = [];
+  let byDay = new Map<string, (Ev & { start: Date; end: Date; planned: Date })[]>();
   let travail: Travail | null = null;
   const today = new Date();
   let mode: 'mois' | 'semaine' | 'annee' = 'mois';
@@ -108,7 +108,9 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
     const sel = events.filter((e) => e.start >= a && e.start < b);
     const seances = sel.filter((e) => e.t === 'seance');
     const coms = sel.filter((e) => e.t === 'commission');
-    const minS = seances.reduce((s, e) => s + (e.m ?? 0), 0);
+    // Heures effectives : durée réelle moins les suspensions, sinon horaire annoncé.
+    const minS = seances.reduce((s, e) => s + (e.rm != null ? e.rm - (e.rs ?? 0) : e.m ?? 0), 0);
+    const reelles = seances.filter((e) => e.rm != null).length;
     const minC = coms.reduce((s, e) => s + (e.m ?? 0), 0);
     const votes = seances.reduce((s, e) => s + e.v, 0);
     const jours = new Set(seances.map((e) => key(e.start))).size;
@@ -116,7 +118,7 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
     const k = (v: string, l: string) => `<div><b class="num">${v}</b><span>${l}</span></div>`;
     kpis.innerHTML =
       k(String(jours), `jour${jours > 1 ? 's' : ''} de séance publique`) +
-      k(`${hours(minS)} h`, `en séance (${seances.length} séances)`) +
+      k(`${hours(minS)} h`, reelles === seances.length ? `de séance effective (${seances.length} séances, suspensions déduites)` : `en séance (${seances.length} séances, dont ${reelles} aux heures réelles)`) +
       k(`${hours(minC)} h`, `de réunions de commission (${coms.length})`) +
       k(votes.toLocaleString('fr-FR'), `scrutins publics, sur ${joursVote} jour${joursVote > 1 ? 's' : ''}`);
   }
@@ -245,7 +247,10 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
 
   function openEvent(i: number) {
     const e = events[i];
-    const dur = e.m ? `${Math.floor(e.m / 60)} h ${pad(e.m % 60)}` : 'durée non publiée';
+    const dh = (m: number) => `${Math.floor(m / 60)} h ${pad(m % 60)}`;
+    const dur = e.rm != null
+      ? `réel : ${dh(e.rm)}${e.rs ? `, dont ${e.rs} min de suspension` : ''} (prévu à ${hm(e.planned)})`
+      : e.m ? `prévu : ${dh(e.m)}` : 'durée non publiée';
     const pres = e.c ? `<p>${e.p} députés présents sur ${e.c} convoqués.</p>` : '';
     const votes = e.v ? `<p><a href="/scrutins/?date=${key(e.start)}">${e.v} scrutin${e.v > 1 ? 's' : ''} public${e.v > 1 ? 's' : ''} ce jour-là →</a></p>` : '';
     detail.querySelector('.detail-body')!.innerHTML = `<p class="kicker">${e.t === 'seance' ? 'Séance publique' : 'Réunion'}${e.start > today || e.e ? ' · à venir' : ''}</p><h3>${esc(e.o || 'Réunion')}</h3><p class="muted">${JOURS[(e.start.getDay() + 6) % 7]} ${e.start.getDate()} ${MOIS[e.start.getMonth()]} ${e.start.getFullYear()}, ${hm(e.start)} · ${dur}</p>${e.x ? `<p>${esc(e.x)}</p>` : ''}${pres}${votes}`;
@@ -285,8 +290,15 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
 
   Promise.all([fetch('/agenda.json').then((r) => r.json()), fetch('/travail.json').then((r) => r.json())]).then(([ev, tr]: [Ev[], Travail]) => {
     events = ev.map((e) => {
-      const start = new Date(e.d);
-      return { ...e, start, end: new Date(start.getTime() + (e.m ?? 120) * 60000) };
+      const planned = new Date(e.d);
+      // Quand le compte rendu existe, on place la séance à ses heures réelles.
+      if (e.ro && e.rm != null) {
+        const [h, mi] = e.ro.split(':').map(Number);
+        const start = new Date(planned);
+        start.setHours(h, mi, 0, 0);
+        return { ...e, planned, start, end: new Date(start.getTime() + e.rm * 60000) };
+      }
+      return { ...e, planned, start: planned, end: new Date(planned.getTime() + (e.m ?? 120) * 60000) };
     });
     byDay = new Map();
     for (const e of events) {
