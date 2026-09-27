@@ -40,3 +40,36 @@ def legislatures(an_ids: list[str]) -> dict[str, dict]:
         log(f"Wikidata indisponible ({e}) : ancienneté calculée sur les seules données AN")
     log(f"Wikidata : ancienneté trouvée pour {len(out)} députés")
     return out
+
+
+PRESIDENTIAL = """
+SELECT ?id ?eLabel WHERE {
+  VALUES ?id { %s }
+  ?p wdt:P4123 ?id ; wdt:P3602 ?e .
+  ?e rdfs:label ?eLabel .
+  FILTER(LANG(?eLabel) = "fr" && CONTAINS(?eLabel, "présidentielle"))
+}
+"""
+
+
+def presidential(an_ids: list[str]) -> dict[str, list[int]]:
+    """Années de candidature à l'élection présidentielle de chaque député (d'après Wikidata)."""
+    import re as _re
+
+    nums = " ".join(f'"{i.removeprefix("PA")}"' for i in an_ids)
+    out: dict[str, set[int]] = {}
+    try:
+        r = httpx.post(
+            ENDPOINT,
+            data={"query": PRESIDENTIAL % nums},
+            headers={"Accept": "application/sparql-results+json", "User-Agent": USER_AGENT},
+            timeout=120,
+        )
+        r.raise_for_status()
+        for b in r.json()["results"]["bindings"]:
+            m = _re.search(r"(19|20)\d{2}", b["eLabel"]["value"])
+            if m:
+                out.setdefault(f"PA{b['id']['value']}", set()).add(int(m.group()))
+    except httpx.HTTPError as e:
+        log(f"Wikidata indisponible pour les présidentielles ({e})")
+    return {k: sorted(v) for k, v in out.items()}

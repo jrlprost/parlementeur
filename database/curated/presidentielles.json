@@ -1,0 +1,11 @@
+{
+  "note": "Résultats officiels proclamés par le Conseil constitutionnel, en pourcentage des suffrages exprimés.",
+  "resultats": [
+    {"annee": 1995, "candidat": "Dominique Voynet", "tour1": 3.32, "tour2": null, "source": "https://fr.wikipedia.org/wiki/%C3%89lection_pr%C3%A9sidentielle_fran%C3%A7aise_de_1995"},
+    {"annee": 2007, "candidat": "Dominique Voynet", "tour1": 1.57, "tour2": null, "source": "https://fr.wikipedia.org/wiki/%C3%89lection_pr%C3%A9sidentielle_fran%C3%A7aise_de_2007"},
+    {"annee": 2012, "candidat": "François Hollande", "tour1": 28.63, "tour2": 51.64, "elu": true, "source": "https://fr.wikipedia.org/wiki/%C3%89lection_pr%C3%A9sidentielle_fran%C3%A7aise_de_2012"},
+    {"annee": 2012, "candidat": "Marine Le Pen", "tour1": 17.90, "tour2": null, "source": "https://fr.wikipedia.org/wiki/%C3%89lection_pr%C3%A9sidentielle_fran%C3%A7aise_de_2012"},
+    {"annee": 2017, "candidat": "Marine Le Pen", "tour1": 21.30, "tour2": 33.90, "source": "https://fr.wikipedia.org/wiki/%C3%89lection_pr%C3%A9sidentielle_fran%C3%A7aise_de_2017"},
+    {"annee": 2022, "candidat": "Marine Le Pen", "tour1": 23.15, "tour2": 41.45, "source": "https://fr.wikipedia.org/wiki/%C3%89lection_pr%C3%A9sidentielle_fran%C3%A7aise_de_2022"}
+  ]
+}

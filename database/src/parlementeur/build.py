@@ -8,11 +8,11 @@ import shutil
 import duckdb
 import httpx
 
-from . import an, hatvp, lobbying, wikidata
+from . import an, elections, hatvp, lobbying, wikidata
 import time
 from contextlib import contextmanager
 
-from .common import DIST, RAW, USER_AGENT, fetch, fetch_info, log, now_iso, write_json
+from .common import DIST, RAW, ROOT, USER_AGENT, fetch, fetch_info, log, now_iso, read_json, write_json
 
 VOTE_FULL = {"p": "pour", "c": "contre", "a": "abstention", "n": "absent"}
 
@@ -129,10 +129,14 @@ def main() -> None:
         amdts, n_amdts = an.load_amendements()
     with step("Questions écrites (Assemblée nationale)"):
         questions, n_questions = an.load_questions()
-    with step("Ancienneté (Wikidata)"):
+    with step("Ancienneté et candidatures présidentielles (Wikidata)"):
         wd = wikidata.legislatures(sorted(ids))
+        pres = wikidata.presidential(sorted(ids))
+        pres_scores = read_json(ROOT / "curated" / "presidentielles.json")["resultats"]
     with step("Déclarations d'intérêts (HATVP)"):
         decl = hatvp.load_declarations(deputes)
+    with step("Législatives 2024 (ministère de l'Intérieur)"):
+        leg = elections.load(deputes)
     with step("Répertoire des représentants d'intérêts (HATVP)"):
         lobby = lobbying.load()
     with step("Portraits officiels"):
@@ -213,8 +217,18 @@ def main() -> None:
             "questions": public["questions"],
             "questionsRepondues": questions.get(d["id"], {}).get("repondues", 0),
             "condamnations": [],
-            "presidentielles": [],
-            "elections": [],
+            "presidentielles": [
+                {
+                    "annee": y,
+                    **next(
+                        ({"tour1": r["tour1"], "tour2": r["tour2"], "elu": r.get("elu", False), "source": r["source"]}
+                         for r in pres_scores if r["annee"] == y and r["candidat"] == f"{d['prenom']} {d['nom']}"),
+                        {"tour1": None, "tour2": None, "elu": False, "source": f"https://www.wikidata.org/wiki/Special:Search?search={d['prenom']}+{d['nom']}"},
+                    ),
+                }
+                for y in pres.get(d["id"], [])
+            ],
+            "elections": [leg[d["id"]]] if d["id"] in leg else [],
             "sources": [],
         }
         write_json(DIST / "deputes" / f"{d['slug']}.json", detail)

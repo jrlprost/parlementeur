@@ -87,7 +87,8 @@ def load_amo():
             {
                 "id": uid,
                 "prenom": ident["prenom"],
-                "nom": ident["nom"],
+                # L'AN distingue les homonymes par un département entre parenthèses : on l'enlève du nom affiché.
+                "nom": re.sub(r"\s*\([^)]*\)\s*$", "", ident["nom"]),
                 "femme": ident.get("civ") == "Mme",
                 "naissance": birth,
                 "age": _age(birth, today),
@@ -95,6 +96,7 @@ def load_amo():
                 "groupeCode": sigle,
                 "departement": dep,
                 "numDepartement": val(lieu.get("numDepartement")),
+                "numCirco": circo,
                 "circonscription": f"{_ordinal_circo(circo)} circonscription de {dep}" if dep and circo else None,
                 "profession": prof,
                 "place": val(mandature.get("placeHemicycle")),
