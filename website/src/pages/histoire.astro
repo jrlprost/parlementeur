@@ -1,0 +1,161 @@
+---
+import Base from '../layouts/Base.astro';
+import { readOptional, fmtDate } from '../lib/data';
+import { layoutHemicycle } from '../lib/hemicycle';
+
+type Leg = {
+  numero: number;
+  debut: string;
+  fin: string | null;
+  election: string;
+  sieges: number;
+  femmes: number;
+  groupes: { nom: string; sigle: string; sieges: number; famille: string }[];
+  president: string;
+  sources: { label: string; url: string }[];
+  note?: string;
+};
+
+const legs = readOptional<Leg[]>('legislatures.json') ?? [];
+const FAMILLES: [string, string, string][] = [
+  ['communiste', 'Communistes', '#9E1B1B'],
+  ['gauche-radicale', 'Gauche radicale', '#CC2443'],
+  ['socialiste', 'Socialistes', '#F08DA9'],
+  ['ecologiste', 'Écologistes', '#3A9D4F'],
+  ['centre-gauche', 'Centre gauche', '#E7B8C8'],
+  ['divers', 'Divers', '#D8B545'],
+  ['centre', 'Centre', '#F08A24'],
+  ['droite', 'Droite', '#2A5DB8'],
+  ['extreme-droite', 'Extrême droite', '#0D2B52'],
+  ['non-inscrits', 'Non-inscrits', '#9A9A9A'],
+  ['vacant', 'Sièges vacants', '#E4E4E0'],
+];
+const color = new Map(FAMILLES.map(([k, , c]) => [k, c]));
+const order = new Map(FAMILLES.map(([k], i) => [k, i]));
+const roman = (n: number) =>
+  ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII'][n] ?? String(n);
+
+// Petits hémicycles : un point par siège, groupes ordonnés de la gauche vers la droite.
+const minis = legs.map((l) => {
+  const L = layoutHemicycle(l.sieges);
+  const fills: string[] = [];
+  for (const g of l.groupes) for (let i = 0; i < g.sieges; i++) fills.push(color.get(g.famille) ?? '#9A9A9A');
+  return { l, L, fills };
+});
+
+// Barres empilées : part des sièges par famille, pour chaque législature.
+const shares = legs.map((l) => {
+  const by = new Map<string, number>();
+  for (const g of l.groupes) by.set(g.famille, (by.get(g.famille) ?? 0) + g.sieges);
+  return { l, parts: [...by.entries()].sort((a, b) => (order.get(a[0]) ?? 99) - (order.get(b[0]) ?? 99)) };
+});
+const femMax = Math.max(1, ...legs.map((l) => l.femmes / l.sieges));
+const last = legs.at(-1);
+---
+<Base title="L'hémicycle depuis 1958" description="La composition de l'Assemblée nationale à chaque législature de la Ve République : groupes, familles politiques, part des femmes." og="/og/histoire.png" section="histoire">
+  <div class="stack" style="--gap:48px">
+    <header class="stack" style="--gap:12px">
+      <p class="kicker">Ve République · {legs.length} législatures</p>
+      <h1>L'hémicycle depuis 1958</h1>
+      <p class="lede">Chaque petit hémicycle montre la composition de l'Assemblée au début d'une législature, de la gauche à la droite. En {legs[0] ? new Date(legs[0].election).getFullYear() : 1958}, {legs[0]?.femmes} femmes sont élues ; en {last ? new Date(last.election).getFullYear() : ''}, elles sont {last?.femmes}.</p>
+    </header>
+
+    {legs.length === 0 && <p class="muted">Données historiques en cours de constitution.</p>}
+
+    <section class="stack" style="--gap:16px">
+      <ul class="legend">
+        {FAMILLES.map(([, label, c]) => <li><i style={`background:${c}`}></i>{label}</li>)}
+      </ul>
+      <ol class="minis">
+        {minis.map(({ l, L, fills }) => (
+          <li>
+            <svg viewBox={`0 0 ${L.width.toFixed(0)} ${L.height.toFixed(0)}`} role="img" aria-label={`${roman(l.numero)}e législature : ${l.groupes.map((g) => `${g.nom} ${g.sieges}`).join(', ')}`}>
+              {L.seats.map((s, i) => <circle cx={s.x.toFixed(1)} cy={s.y.toFixed(1)} r={L.dot.toFixed(2)} fill={fills[i] ?? '#9A9A9A'} />)}
+            </svg>
+            <p><b>{roman(l.numero)}<sup>e</sup></b> <span class="muted num">{new Date(l.election).getFullYear()}</span></p>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    {shares.length > 0 && (
+      <section class="stack" style="--gap:14px">
+        <h2>Le poids de chaque famille politique</h2>
+        <div class="stacks">
+          {shares.map(({ l, parts }) => (
+            <div class="row">
+              <span class="lbl num">{roman(l.numero)}<sup>e</sup> · {new Date(l.election).getFullYear()}</span>
+              <div class="bar" role="img" aria-label={parts.map(([f, n]) => `${f} ${n}`).join(', ')}>
+                {parts.map(([f, n]) => <span style={`width:${(n / l.sieges) * 100}%;background:${color.get(f)}`} title={`${f} : ${n} sièges`}></span>)}
+              </div>
+            </div>
+          ))}
+        </div>
+        <p class="src">Part des sièges au début de chaque législature, groupes et apparentés compris.</p>
+      </section>
+    )}
+
+    {legs.length > 0 && (
+      <section class="stack" style="--gap:14px">
+        <h2>La place des femmes</h2>
+        <div class="fem">
+          {legs.map((l) => (
+            <div class="col">
+              <span class="v num">{Math.round((l.femmes / l.sieges) * 100)} %</span>
+              <div class="stick"><div style={`height:${((l.femmes / l.sieges) / femMax) * 100}%`}></div></div>
+              <span class="y num">{new Date(l.election).getFullYear()}</span>
+            </div>
+          ))}
+        </div>
+        <p class="src">Part de femmes parmi les députés élus aux élections générales.</p>
+      </section>
+    )}
+
+    {legs.length > 0 && (
+      <section class="stack" style="--gap:12px">
+        <h2>Législature par législature</h2>
+        <div class="scroll">
+          <table class="tbl">
+            <thead><tr><th>Législature</th><th>Période</th><th class="r">Sièges</th><th class="r">Femmes</th><th>Groupes</th><th>Sources</th></tr></thead>
+            <tbody>
+              {legs.map((l) => (
+                <tr>
+                  <td><b>{roman(l.numero)}<sup>e</sup></b></td>
+                  <td class="small num">{fmtDate(l.debut)} – {l.fin ? fmtDate(l.fin) : "aujourd'hui"}</td>
+                  <td class="r num">{l.sieges}</td>
+                  <td class="r num">{l.femmes}</td>
+                  <td class="small">{l.groupes.map((g) => `${g.sigle} ${g.sieges}`).join(' · ')}{l.note && <span class="muted block">{l.note}</span>}</td>
+                  <td class="small">{l.sources.map((s, i) => <a href={s.url}>{i + 1}</a>).reduce((a: unknown[], b, i) => (i ? [...a, ' ', b] : [b]), [])}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )}
+  </div>
+</Base>
+
+<style>
+  .legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.85rem; }
+  .legend li { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .minis { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px 16px; }
+  .minis li { display: grid; gap: 4px; }
+  .minis svg { width: 100%; height: auto; }
+  .minis p { font-size: 0.9rem; }
+  .stacks { display: grid; gap: 6px; }
+  .row { display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: center; font-size: 0.85rem; }
+  .bar { display: flex; height: 16px; border-radius: 2px; overflow: hidden; background: var(--ink-8); }
+  .bar span { height: 100%; }
+  .fem { display: grid; grid-template-columns: repeat(auto-fit, minmax(38px, 1fr)); gap: 6px; align-items: end; height: 220px; }
+  .col { display: grid; grid-template-rows: auto 1fr auto; height: 100%; gap: 4px; text-align: center; font-size: 0.75rem; }
+  .stick { display: flex; align-items: flex-end; background: var(--ink-4); border-radius: 2px; }
+  .stick div { width: 100%; background: var(--ramp-to); border-radius: 2px; }
+  .scroll { overflow-x: auto; }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 760px; }
+  .tbl th { text-align: left; font-size: 0.8rem; color: var(--ink-62); border-bottom: 1px solid var(--ink-16); padding: 6px 8px 6px 0; font-weight: 600; }
+  .tbl td { border-bottom: 1px solid var(--ink-8); padding: 8px 8px 8px 0; vertical-align: top; }
+  .tbl .r { text-align: right; }
+  .block { display: block; }
+</style>
