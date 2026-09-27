@@ -64,16 +64,20 @@ if (plan) {
 }
 ---
 <section class="hemi-block" data-view={v.id}>
-  {real && (
-    <div class="layout-toggle seg" role="group" aria-label="Disposition">
-      <button type="button" data-layout="arcs" aria-pressed="true">Par groupe</button>
-      <button type="button" data-layout="reel" aria-pressed="false">Plan réel</button>
-    </div>
-  )}
 
 
   <div class="hemi-grid">
     <figure class="hemi-fig">
+      {real && (
+        <div class="layout-toggle" role="group" aria-label="Disposition des sièges">
+          <button type="button" data-layout="arcs" aria-pressed="true" aria-label="Par groupe" data-tip="Par groupe">
+            <svg viewBox="0 0 24 14" width="24" height="14" aria-hidden="true"><path d="M2 13a10 10 0 0 1 5-8.66L9.5 8.7A5 5 0 0 0 7 13z" fill="currentColor"/><path d="M8 3.8a10 10 0 0 1 8 0L13.5 8.2a5 5 0 0 0-3 0z" fill="currentColor" opacity=".55"/><path d="M17 4.34A10 10 0 0 1 22 13h-5a5 5 0 0 0-2.5-4.3z" fill="currentColor"/></svg>
+          </button>
+          <button type="button" data-layout="reel" aria-pressed="false" aria-label="Plan réel" data-tip="Plan réel">
+            <svg viewBox="0 0 24 14" width="24" height="14" aria-hidden="true">{[[3,12],[7,12],[17,12],[21,12],[4,8],[8,8],[16,8],[20,8],[6,4],[10,3],[14,3],[18,4]].map(([x,y]) => <circle cx={x} cy={y} r="1.5" fill="currentColor"/>)}</svg>
+          </button>
+        </div>
+      )}
       <svg class="hemi" viewBox={`0 0 ${L.width.toFixed(0)} ${L.height.toFixed(0)}`} role="img" aria-label={`Hémicycle de ${deputes.length} sièges : ${v.titre}`}>
         {L.seats.map((s, i) => (
           <circle cx={s.x.toFixed(1)} cy={s.y.toFixed(1)} r={L.dot.toFixed(2)} data-i={i} style={`fill:${initial[i]}`} />
@@ -118,12 +122,7 @@ if (plan) {
     </div>
   </div>
 
-  <div class="finder">
-    <label for="find-depute" class="small muted">Trouver un député par son nom</label>
-    <input id="find-depute" type="search" placeholder="Ex. Marine Le Pen, Boyard" autocomplete="off" aria-describedby="find-help" />
-    <ul class="find-results" role="listbox" hidden></ul>
-    <p id="find-help" class="small muted find-empty" hidden></p>
-  </div>
+
 
   <script type="application/json" class="hemi-data" set:html={JSON.stringify({ real, realDot: +realDot.toFixed(2), dot: +L.dot.toFixed(2), people, groupNames })}></script>
 </section>
@@ -195,29 +194,6 @@ if (plan) {
       if (e.state?.seat != null) open(e.state.seat, false);
       else close(false);
     });
-    // Recherche sur le nom et le prénom uniquement, sans accents ni tirets, mots dans n'importe quel ordre.
-    const norm = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[-']/g, ' ');
-    const index = data.people.map((p) => norm(p.n));
-    const input = block.querySelector<HTMLInputElement>('#find-depute')!;
-    const list = block.querySelector<HTMLUListElement>('.find-results')!;
-    const empty = block.querySelector<HTMLElement>('.find-empty')!;
-    input.addEventListener('input', () => {
-      const words = norm(input.value.trim()).split(/\s+/).filter(Boolean);
-      if (!words.length || input.value.trim().length < 2) { list.hidden = true; empty.hidden = true; return; }
-      const hits = index.map((t, i) => (words.every((w) => t.includes(w)) ? i : -1)).filter((i) => i >= 0).slice(0, 8);
-      list.innerHTML = hits.map((i) => { const p = data.people[i]; return `<li><button type="button" data-i="${i}">${esc(p.n)} <span>${esc(p.g)}${p.c ? ' · ' + esc(p.c) : ''}</span></button></li>`; }).join('');
-      list.hidden = !hits.length;
-      empty.hidden = hits.length > 0;
-      empty.textContent = hits.length ? '' : `Aucun des 577 députés en exercice ne correspond à « ${input.value.trim()} ». Parlementeur couvre pour l'instant l'Assemblée élue en 2024 : les anciens députés n'y figurent pas encore.`;
-    });
-    list.addEventListener('click', (e) => {
-      const btn = (e.target as Element).closest('button');
-      if (!btn) return;
-      const i = Number(btn.dataset.i);
-      open(i);
-      list.hidden = true;
-      circles[i].scrollIntoView({ block: 'center', behavior: 'smooth' });
-    });
   }
 </script>
 
@@ -232,7 +208,15 @@ if (plan) {
   .hemi circle { cursor: pointer; transition: fill 0.35s ease, transform 0.7s cubic-bezier(.4,0,.2,1); }
   .hemi.reel .hemi-total, .hemi.reel .hemi-sub { opacity: 0; }
   .hemi-total, .hemi-sub { transition: opacity .3s; }
-  .layout-toggle { justify-self: start; }
+  .hemi-fig { position: relative; }
+  .layout-toggle { position: absolute; top: 0; right: 0; z-index: 2; display: flex; border: 1px solid var(--ink-16); border-radius: 8px; overflow: visible; background: var(--bg); }
+  .layout-toggle button { position: relative; background: none; border: 0; padding: 7px 9px; color: var(--ink-62); display: grid; place-items: center; }
+  .layout-toggle button + button { border-left: 1px solid var(--ink-16); }
+  .layout-toggle button[aria-pressed='true'] { background: var(--ink); color: var(--bg); }
+  .layout-toggle button:first-child { border-radius: 7px 0 0 7px; }
+  .layout-toggle button:last-child { border-radius: 0 7px 7px 0; }
+  .layout-toggle button::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); right: 0; white-space: nowrap; font-size: 0.78rem; background: var(--ink); color: var(--bg); padding: 3px 8px; border-radius: 4px; opacity: 0; pointer-events: none; transition: opacity 0.15s; }
+  .layout-toggle button:hover::after, .layout-toggle button:focus-visible::after { opacity: 1; }
   .hemi circle:hover { stroke: var(--ink); stroke-width: 2; }
   .hemi :global(circle.sel) { stroke: var(--ink); stroke-width: 3; }
   .hemi-total { font-family: var(--serif); font-weight: 600; font-size: 52px; fill: var(--ink); }
@@ -261,10 +245,4 @@ if (plan) {
   .panel :global(dt) { color: var(--ink-62); }
   .panel :global(dd) { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
   .panel :global(.more) { font-weight: 600; }
-  .finder { display: grid; gap: 4px; max-width: 480px; width: 100%; margin-inline: auto; position: relative; }
-  .find-results { list-style: none; margin: 0; padding: 4px; border: 1px solid var(--ink-16); border-radius: 8px; background: var(--bg); display: grid; }
-  .find-results :global(button) { width: 100%; text-align: left; background: none; border: 0; padding: 8px 10px; border-radius: 6px; font-weight: 600; }
-  .find-results :global(button:hover), .find-results :global(button:focus-visible) { background: var(--ink-4); }
-  .find-results :global(button span) { font-weight: 400; color: var(--ink-62); font-size: 0.85rem; }
-  .finder input { font: inherit; padding: 9px 12px; border: 1px solid var(--ink-16); border-radius: 8px; background: var(--bg); color: var(--ink); }
 </style>
