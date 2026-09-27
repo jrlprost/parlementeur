@@ -111,6 +111,12 @@ export type DeputeDetail = Depute & {
   presidentielles: { annee: number; tour1: number | null; tour2: number | null; elu: boolean; source: string }[];
   elections: { annee: number; tour: number; pct: number | null; voix: number; nuance: string; participation: number | null; adversaires: { nom: string; nuance: string; pct: number | null }[]; source: string }[];
   sources: Source[];
+  rencontres?: {
+    rapporteur: { organisation: string; registre: string[]; etoile: boolean; rapports: { titre: string; url: string }[] }[];
+    commissions: { total: number; avecLobby: { date: string; organe: string; texte: string; registre: string[] }[] };
+    amendements: { texte: string; n: number; groupes: number; exemple: string }[];
+    amendementsTotal: number;
+  };
 };
 
 export type ScrutinIndex = {

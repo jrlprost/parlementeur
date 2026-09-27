@@ -187,6 +187,40 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
       </section>
     ) : null}
 
+    {det?.rencontres && (
+      <section class="stack" style="--gap:14px">
+        <h2>Rencontres documentées</h2>
+        <p class="muted small">Ce que les documents publics disent des organisations que {d.femme ? 'cette députée' : 'ce député'} a entendues. <a href="/rencontres/#methode">D'où viennent ces données</a>.</p>
+        {det.rencontres.rapporteur.length > 0 && (
+          <div class="stack" style="--gap:6px">
+            <h3 class="h4">Comme rapporteur{d.femme ? 'e' : ''} : {det.rencontres.rapporteur.length} auditions listées dans ses rapports</h3>
+            <ul class="plain small">
+              {det.rencontres.rapporteur.slice(0, 25).map((o) => (
+                <li>{(o.registre.length > 0 || o.etoile) && <span class="lob" title="Organisation inscrite au répertoire des représentants d'intérêts">lobby</span>} {o.organisation.slice(0, 160)}{o.registre.length > 0 && <span class="muted"> · répertoire HATVP : {o.registre.join(', ')}</span>} <a href={o.rapports[0].url}>rapport</a></li>
+              ))}
+            </ul>
+            {det.rencontres.rapporteur.length > 25 && <p class="small muted">Et {det.rencontres.rapporteur.length - 25} autres, dans les annexes des rapports.</p>}
+          </div>
+        )}
+        <div class="stack" style="--gap:6px">
+          <h3 class="h4">En commission : présent{d.femme ? 'e' : ''} à {det.rencontres.commissions.total} auditions{det.rencontres.commissions.avecLobby.length ? `, dont ${det.rencontres.commissions.avecLobby.length} avec une organisation inscrite comme lobby` : ''}</h3>
+          {det.rencontres.commissions.avecLobby.length > 0 && (
+            <ul class="plain small">
+              {det.rencontres.commissions.avecLobby.slice(0, 12).map((a) => <li><span class="lob">lobby</span> {fmtDate(a.date)} · {a.registre.join(', ')} <span class="muted">({a.organe})</span></li>)}
+            </ul>
+          )}
+        </div>
+        {det.rencontres.amendementsTotal > 0 && (
+          <div class="stack" style="--gap:6px">
+            <h3 class="h4">{det.rencontres.amendementsTotal} amendements au texte identique à ceux d'autres groupes</h3>
+            <ul class="plain small">
+              {det.rencontres.amendements.slice(0, 6).map((a) => <li>« {a.texte.slice(0, 140)}… » <span class="muted">déposé par {a.n} députés de {a.groupes} groupes</span> <a href={`https://www.assemblee-nationale.fr/dyn/17/amendements/${a.exemple}`}>voir</a></li>)}
+            </ul>
+          </div>
+        )}
+      </section>
+    )}
+
     <section class="stack" style="--gap:12px">
       <h2>Condamnations définitives</h2>
       {det?.condamnations?.length ? (
@@ -232,7 +266,7 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
   .head { display: flex; gap: 24px; justify-content: space-between; align-items: flex-start; }
   .photo { border-radius: 4px; width: 104px; height: auto; flex: none; filter: grayscale(0.15); }
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: 0; }
-  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 16px; }
   .kpis div { border-top: 2px solid var(--ink); padding-top: 10px; display: grid; gap: 2px; }
   .kpis b { font-family: var(--serif); font-size: 2rem; font-weight: 600; line-height: 1.1; }
   .kpis span { font-size: 0.85rem; color: var(--ink-62); }
@@ -256,5 +290,7 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
   .tbl th { text-align: left; font-weight: 600; font-size: 0.8rem; color: var(--ink-62); border-bottom: 1px solid var(--ink-16); padding: 6px 0; }
   .tbl td { border-bottom: 1px solid var(--ink-8); padding: 8px 0; vertical-align: top; }
   .tbl .r { text-align: right; padding-left: 16px; white-space: nowrap; }
+  .h4 { font-size: 1.05rem; font-family: var(--sans); font-weight: 700; }
+  .lob { display: inline-block; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 0 6px; border-radius: 999px; background: var(--ramp-to); color: #fff; }
   .plain { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
 </style>
