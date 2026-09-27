@@ -25,6 +25,19 @@ function fill(viewId: string, d: Depute): string {
 }
 
 const initial = deputes.map((d) => fill(v.id, d));
+// Valeur montrée dans la micro-fiche au survol, selon la thématique affichée.
+function hoverValue(d: Depute): string | undefined {
+  switch (v.id) {
+    case 'age': return d.age != null ? `${d.age} ans` : undefined;
+    case 'participation': return d.participation != null ? `Vote à ${fmtPct(d.participation)} des scrutins` : undefined;
+    case 'solennels': return d.participationSolennels != null ? `${fmtPct(d.participationSolennels)} des votes solennels` : undefined;
+    case 'loyaute': return d.loyaute != null ? `Loyauté : ${fmtPct(d.loyaute)}` : undefined;
+    case 'amendements': return `${d.amendements} amendements déposés`;
+    case 'anciennete': return d.legislatures != null ? `${d.legislatures} législature${d.legislatures > 1 ? 's' : ''}` : undefined;
+    case 'revenus': return d.revenusAnnexes != null ? `Revenus annexes : ${fmtEur(d.revenusAnnexes)}` : undefined;
+    default: return undefined;
+  }
+}
 const people = deputes.map((d) => ({
   s: d.slug,
   n: `${d.prenom} ${d.nom}`,
@@ -80,7 +93,7 @@ if (plan) {
       )}
       <svg class="hemi" viewBox={`0 0 ${L.width.toFixed(0)} ${L.height.toFixed(0)}`} role="img" aria-label={`Hémicycle de ${deputes.length} sièges : ${v.titre}`}>
         {L.seats.map((s, i) => (
-          <circle cx={s.x.toFixed(1)} cy={s.y.toFixed(1)} r={L.dot.toFixed(2)} data-i={i} style={`fill:${initial[i]}`} />
+          <circle cx={s.x.toFixed(1)} cy={s.y.toFixed(1)} r={L.dot.toFixed(2)} data-i={i} data-s={deputes[i].slug} data-v={hoverValue(deputes[i])} style={`fill:${initial[i]}`} />
         ))}
         <text x={L.cx} y={L.cy - 18} text-anchor="middle" class="hemi-total">{deputes.length}</text>
         <text x={L.cx} y={L.cy + 6} text-anchor="middle" class="hemi-sub">députés</text>

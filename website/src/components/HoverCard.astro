@@ -1,0 +1,64 @@
+---
+// Micro-fiche au survol de tout élément portant data-s (slug du député). Réservée aux souris.
+---
+<div id="hovercard" class="hc" hidden role="tooltip"></div>
+
+<script>
+  type Card = [string, string, string, string, string, number | null, number];
+  const box = document.getElementById('hovercard')!;
+  let cards: Record<string, Card> | null = null;
+  let loading: Promise<void> | null = null;
+  let current: Element | null = null;
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+  const ensure = () => (loading ??= fetch('/cartes.json').then((r) => r.json()).then((j) => { cards = j; }));
+
+  function place(x: number, y: number) {
+    const w = box.offsetWidth, h = box.offsetHeight;
+    const left = Math.min(window.innerWidth - w - 12, x + 16);
+    const top = y + h + 24 > window.innerHeight ? y - h - 12 : y + 18;
+    box.style.transform = `translate(${Math.max(8, left)}px, ${Math.max(8, top)}px)`;
+  }
+
+  async function show(el: Element, x: number, y: number) {
+    const slug = (el as HTMLElement).dataset.s;
+    if (!slug) return;
+    current = el;
+    await ensure();
+    if (current !== el || !cards) return;
+    const c = cards[slug];
+    if (!c) return;
+    const v = (el as HTMLElement).dataset.v;
+    box.innerHTML =
+      (c[6] ? `<img src="/photos/${slug}.jpg" alt="" width="56" height="70">` : '') +
+      `<div><p class="hn">${esc(c[0])}</p><p class="hg"><i style="background:${c[3]}"></i>${esc(c[2])}</p>` +
+      `<p class="hm">${esc(c[4])}${c[5] != null ? ` · ${c[5]} ans` : ''}</p>` +
+      (v ? `<p class="hv">${esc(v)}</p>` : '') + '</div>';
+    box.hidden = false;
+    place(x, y);
+  }
+
+  if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    document.addEventListener('pointerover', (e) => {
+      const el = (e.target as Element).closest?.('[data-s]');
+      if (el) show(el, e.clientX, e.clientY);
+      else { current = null; box.hidden = true; }
+    });
+    document.addEventListener('pointermove', (e) => { if (!box.hidden) place(e.clientX, e.clientY); });
+    document.addEventListener('scroll', () => { box.hidden = true; current = null; }, { passive: true });
+    // Les composants qui ajoutent data-s après coup (hémicycle d'un scrutin) peuvent demander l'affichage.
+    (window as unknown as { hovercard: typeof show }).hovercard = show;
+  }
+</script>
+
+<style>
+  .hc { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; display: flex; gap: 10px; align-items: flex-start; max-width: 300px; padding: 10px; background: var(--bg); color: var(--ink); border: 1px solid var(--ink-16); border-radius: 10px; box-shadow: 0 10px 30px color-mix(in srgb, var(--ink) 18%, transparent); font-size: 0.85rem; }
+  .hc[hidden] { display: none; }
+  .hc :global(img) { width: 56px; height: 70px; object-fit: cover; border-radius: 5px; flex: none; }
+  .hc :global(p) { margin: 0; }
+  .hc :global(.hn) { font-family: var(--serif); font-weight: 600; font-size: 1.05rem; line-height: 1.2; }
+  .hc :global(.hg) { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+  .hc :global(.hg i) { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .hc :global(.hm) { color: var(--ink-62); font-size: 0.78rem; margin-top: 2px; }
+  .hc :global(.hv) { margin-top: 6px; font-weight: 600; }
+</style>

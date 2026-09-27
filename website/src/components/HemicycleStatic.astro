@@ -6,12 +6,13 @@ interface Props {
   fills: string[];
   titles?: string[];
   links?: string[];
+  slugs?: string[];
   highlight?: number;
   label: string;
   center?: string;
   sub?: string;
 }
-const { fills, titles, links, highlight, label, center, sub } = Astro.props;
+const { fills, titles, links, slugs, highlight, label, center, sub } = Astro.props;
 const L = layoutHemicycle(fills.length);
 const order = [...L.seats.keys()];
 if (highlight != null) order.push(order.splice(highlight, 1)[0]);
@@ -20,7 +21,7 @@ if (highlight != null) order.push(order.splice(highlight, 1)[0]);
   {order.map((i) => {
     const s = L.seats[i];
     const c = (
-      <circle cx={s.x.toFixed(1)} cy={s.y.toFixed(1)} r={(L.dot * (i === highlight ? 1.9 : 1)).toFixed(2)} style={`fill:${fills[i]}`} class={i === highlight ? 'hl' : undefined}>
+      <circle cx={s.x.toFixed(1)} cy={s.y.toFixed(1)} r={(L.dot * (i === highlight ? 1.9 : 1)).toFixed(2)} style={`fill:${fills[i]}`} data-s={slugs?.[i]} class={i === highlight ? 'hl' : undefined}>
         {titles && <title>{titles[i]}</title>}
       </circle>
     );

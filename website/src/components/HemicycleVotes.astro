@@ -54,6 +54,11 @@ const { codes, label } = Astro.props;
       const i = Number(c.getAttribute('data-i'));
       const p = await who(i);
       tip.textContent = `${p[1]} (${p[2]}) : ${LABEL[codes[i]]}`;
+      // Micro-fiche au survol : le slug n'est connu qu'une fois la liste chargée.
+      c.setAttribute('data-s', p[0]);
+      c.setAttribute('data-v', `A voté : ${LABEL[codes[i]]}`);
+      const hc = (window as unknown as { hovercard?: (el: Element, x: number, y: number) => void }).hovercard;
+      if (hc && e instanceof PointerEvent) hc(c, e.clientX, e.clientY);
     });
     svg.addEventListener('click', async (e) => {
       const c = (e.target as Element).closest('circle');

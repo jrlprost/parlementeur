@@ -91,7 +91,7 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
 
     <section class="stack" style="--gap:12px">
       <h2>Sa place dans l'hémicycle</h2>
-      <HemicycleStatic fills={fills} highlight={idx} label={`Position de ${nom} dans l'hémicycle`} />
+      <HemicycleStatic fills={fills} slugs={deputes.map((x) => x.slug)} highlight={idx} label={`Position de ${nom} dans l'hémicycle`} />
       <p class="src">Source : <a href={d.urlAN}>fiche officielle de l'Assemblée nationale</a>.</p>
     </section>
 
@@ -152,7 +152,7 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
             </table>
           )}
           {det.interets.conjoint && <p><span class="muted">Activité du conjoint déclarée :</span> {det.interets.conjoint}</p>}
-          <p class="src">Source : <a href={det.interets.url}>déclaration publiée par la HATVP</a>. Le patrimoine des parlementaires n'est pas publiable (article LO 135-2 du code électoral) : <a href="/methode/#patrimoine">pourquoi il n'apparaît pas ici</a>.</p>
+          <p class="src">Source : <a href={det.interets.url}>déclaration publiée par la HATVP</a>. Le patrimoine des députés n'est consultable qu'en préfecture et sa publication est interdite (loi du 11 octobre 2013, article 26) : <a href="/methode/#patrimoine">pourquoi il n'apparaît pas ici</a>.</p>
         </div>
       ) : (
         <p class="muted">Aucune déclaration d'intérêts publiée par la HATVP n'a été rapprochée de ce député.</p>

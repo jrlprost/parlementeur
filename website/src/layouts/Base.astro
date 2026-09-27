@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import { SITE } from '../lib/site';
 import Search from '../components/Search.astro';
+import HoverCard from '../components/HoverCard.astro';
 
 interface Props {
   title?: string;
@@ -78,6 +79,7 @@ const nav = [
     <main class="wrap">
       <slot />
     </main>
+    <HoverCard />
     <footer class="site-foot wrap">
       <hr class="rule" />
       <div class="foot-grid">
