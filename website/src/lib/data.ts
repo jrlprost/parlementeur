@@ -23,12 +23,14 @@ export type Depute = {
   participationSolennels: number | null;
   loyaute: number | null;
   votes: number | null;
+  scrutinsPossibles?: number | null;
   amendements: number;
   amendementsAdoptes: number;
   questions: number;
   revenusAnnexes: number | null;
   anneeRevenus: number | null;
   fonction: string | null;
+  groupesSuccessifs?: number;
   place: string | null;
   urlAN: string;
   urlHATVP: string | null;

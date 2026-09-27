@@ -3,6 +3,8 @@ import Base from '../layouts/Base.astro';
 import Hemicycle from './Hemicycle.astro';
 import { load, fmtDate } from '../lib/data';
 import { viewById } from '../lib/views';
+import Insights from './Insights.astro';
+import { insights } from '../lib/insights';
 
 interface Props { view: string }
 const { view } = Astro.props;
@@ -12,10 +14,19 @@ const og = `/og/vue-${v.id}.png`;
 ---
 <Base title={view === 'groupes' ? undefined : v.titre} description={v.intro} og={og} section="assemblee">
   <div class="stack" style="--gap:20px">
-    <p class="kicker">Assemblée nationale · {meta.legislature}<sup>e</sup> législature · données au {fmtDate(meta.generatedAt)}</p>
-    <h1 data-view-title>{v.titre}</h1>
-    <p class="lede" data-view-intro>{v.intro}</p>
+    <p class="kicker center">Assemblée nationale · {meta.legislature}<sup>e</sup> législature · données au {fmtDate(meta.generatedAt)}</p>
     <Hemicycle deputes={deputes} groupes={groupes} view={v.id} />
+    <header class="stack head" style="--gap:10px">
+      <h1>{v.titre}</h1>
+      <p class="lede">{v.intro}</p>
+    </header>
+    <Insights blocks={insights(v.id, deputes, groupes)} />
     <p class="src">Source : <a href={v.source.url}>{v.source.label}</a>. Cliquez sur un siège pour ouvrir la fiche du député. <a href="/methode/">Comment ces chiffres sont calculés</a>.</p>
   </div>
 </Base>
+
+<style>
+  .center { text-align: center; }
+  .head { margin-top: 12px; border-top: 1px solid var(--ink-16); padding-top: 24px; }
+  .head h1 { font-size: var(--step-3); }
+</style>

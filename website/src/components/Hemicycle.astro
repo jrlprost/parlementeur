@@ -19,22 +19,11 @@ function fill(viewId: string, d: Depute): string {
   if (vw.kind === 'groupe') return gcolor.get(d.groupe) ?? '#9A9A9A';
   const x = vw.value!(d);
   if (x == null) return 'var(--ink-8)';
-  if (vw.kind === 'binaire') return x ? 'var(--ramp-to)' : 'var(--ink-16)';
+  if (vw.kind === 'binaire') return x ? 'var(--ramp-to)' : 'var(--ink-62)';
   const t = Math.round((x as number) * 100);
   return `color-mix(in srgb, var(--ramp-to) ${t}%, var(--ramp-from))`;
 }
 
-// Valeurs compactes de chaque vue (entiers), converties en couleurs dans le navigateur.
-const gIndex = new Map(groupes.map((g, i) => [g.sigle, i]));
-function code(viewId: string, d: Depute): number {
-  const vw = viewById(viewId);
-  if (vw.kind === 'groupe') return gIndex.get(d.groupe) ?? -1;
-  const x = vw.value!(d);
-  if (x == null) return -1;
-  if (vw.kind === 'binaire') return x ? 1 : 0;
-  return Math.round((x as number) * 100);
-}
-const codes: Record<string, number[]> = Object.fromEntries(VIEWS.map((vw) => [vw.id, deputes.map((d) => code(vw.id, d))]));
 const initial = deputes.map((d) => fill(v.id, d));
 const people = deputes.map((d) => ({
   s: d.slug,
@@ -81,13 +70,7 @@ if (plan) {
       <button type="button" data-layout="reel" aria-pressed="false">Plan réel</button>
     </div>
   )}
-  <div class="views" role="toolbar" aria-label="Thématique">
-    <div class="seg">
-      {VIEWS.map((vw) => (
-        <a href={vw.id === 'groupes' ? '/' : `/vue/${vw.id}/`} data-view={vw.id} aria-pressed={vw.id === v.id ? 'true' : 'false'}>{vw.label}</a>
-      ))}
-    </div>
-  </div>
+
 
   <div class="hemi-grid">
     <figure class="hemi-fig">
@@ -114,7 +97,7 @@ if (plan) {
         )}
         {v.kind === 'binaire' && (
           <ul class="glegend">
-            <li><i style="background:var(--ink-16)"></i>{v.legende?.[0]}</li>
+            <li><i style="background:var(--ink-62)"></i>{v.legende?.[0]}</li>
             <li><i style="background:var(--ramp-to)"></i>{v.legende?.[1]}</li>
           </ul>
         )}
@@ -127,6 +110,14 @@ if (plan) {
     </aside>
   </div>
 
+  <div class="views" role="toolbar" aria-label="Thématique">
+    <div class="seg">
+      {VIEWS.map((vw) => (
+        <a href={vw.id === 'groupes' ? '/' : `/vue/${vw.id}/`} data-view={vw.id} aria-pressed={vw.id === v.id ? 'true' : 'false'}>{vw.label}</a>
+      ))}
+    </div>
+  </div>
+
   <div class="finder">
     <label for="find-depute" class="small muted">Trouver un député par nom ou département</label>
     <input id="find-depute" list="deputes-list" placeholder="Ex. Paris, ou un nom" autocomplete="off" />
@@ -135,22 +126,15 @@ if (plan) {
     </datalist>
   </div>
 
-  <script type="application/json" class="hemi-data" set:html={JSON.stringify({ real, realDot: +realDot.toFixed(2), dot: +L.dot.toFixed(2), codes, colors: groupes.map((g) => g.couleur), people, groupNames, views: VIEWS.map(({ id, titre, intro, kind, legende }) => ({ id, titre, intro, kind, legende })) })}></script>
+  <script type="application/json" class="hemi-data" set:html={JSON.stringify({ real, realDot: +realDot.toFixed(2), dot: +L.dot.toFixed(2), people, groupNames })}></script>
 </section>
 
 <script>
   type Person = { s: string; n: string; g: string; c: string | null; a: number | null; f: boolean; p: string | null; l: string | null; m: number | null; r: string | null; am: number; ph: string | null };
-  type ViewLite = { id: string; titre: string; intro: string; kind: string; legende?: [string, string] };
 
   for (const block of document.querySelectorAll<HTMLElement>('.hemi-block')) {
     const data = JSON.parse(block.querySelector('.hemi-data')!.textContent!) as {
-      real: [number, number][] | null; realDot: number; dot: number; codes: Record<string, number[]>; colors: string[]; people: Person[]; groupNames: Record<string, string>; views: ViewLite[];
-    };
-    const toFill = (kind: string, c: number) => {
-      if (c < 0) return 'var(--ink-8)';
-      if (kind === 'groupe') return data.colors[c];
-      if (kind === 'binaire') return c ? 'var(--ramp-to)' : 'var(--ink-16)';
-      return `color-mix(in srgb, var(--ramp-to) ${c}%, var(--ramp-from))`;
+      real: [number, number][] | null; realDot: number; dot: number; people: Person[]; groupNames: Record<string, string>;
     };
     const circles = [...block.querySelectorAll<SVGCircleElement>('circle')];
     const panel = block.querySelector<HTMLElement>('.panel')!;
@@ -189,23 +173,11 @@ if (plan) {
       selected = null;
       if (push) history.pushState({}, '', baseUrl);
     }
-    function setView(id: string, push = true) {
-      const f = data.codes[id];
-      const kind = data.views.find((x) => x.id === id)?.kind;
-      if (!f || !kind) return;
-      circles.forEach((c, i) => (c.style.fill = toFill(kind, f[i])));
-      block.dataset.view = id;
-      block.querySelectorAll<HTMLAnchorElement>('.views a').forEach((a) => a.setAttribute('aria-pressed', String(a.dataset.view === id)));
-      const v = data.views.find((x) => x.id === id)!;
-      document.dispatchEvent(new CustomEvent('hemiview', { detail: v }));
-      if (push) history.pushState({ view: id }, '', id === 'groupes' ? '/' : `/vue/${id}/`);
-    }
-
     const svgEl = block.querySelector('svg')!;
-    block.querySelectorAll<HTMLButtonElement>('.layout-toggle button').forEach((b) =>
-      b.addEventListener('click', () => {
-        const reel = b.dataset.layout === 'reel';
-        block.querySelectorAll('.layout-toggle button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    block.querySelectorAll<HTMLButtonElement>('.layout-toggle button').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        const reel = btn.dataset.layout === 'reel';
+        block.querySelectorAll('.layout-toggle button').forEach((x) => x.setAttribute('aria-pressed', String(x === btn)));
         svgEl.classList.toggle('reel', reel);
         circles.forEach((c, i) => {
           const d = data.real![i];
@@ -223,24 +195,7 @@ if (plan) {
     window.addEventListener('popstate', (e) => {
       if (e.state?.seat != null) open(e.state.seat, false);
       else close(false);
-      if (e.state?.view) setView(e.state.view, false);
     });
-    block.querySelectorAll<HTMLAnchorElement>('.views a').forEach((a) =>
-      a.addEventListener('click', (e) => {
-        // Les vues avec une légende différente rechargent la page ; les autres changent sur place.
-        const cur = data.views.find((x) => x.id === block.dataset.view)!;
-        const next = data.views.find((x) => x.id === a.dataset.view)!;
-        if (cur.kind !== next.kind) return;
-        e.preventDefault();
-        setView(next.id);
-        const h = document.querySelector('[data-view-title]');
-        const p = document.querySelector('[data-view-intro]');
-        if (h) h.textContent = next.titre;
-        if (p) p.textContent = next.intro;
-        const rl = block.querySelector('.rl');
-        if (rl && next.legende) rl.innerHTML = `<span>${next.legende[0]}</span><span>${next.legende[1]}</span>`;
-      }),
-    );
     const input = block.querySelector<HTMLInputElement>('#find-depute')!;
     input.addEventListener('change', () => {
       const q = input.value.split(' · ')[0].trim().toLowerCase();
@@ -252,11 +207,12 @@ if (plan) {
 
 <style>
   .hemi-block { display: grid; gap: 16px; }
-  .views { overflow-x: auto; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
+  .views { view-transition-name: views; overflow-x: auto; display: flex; justify-content: center; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
   .views .seg { flex-wrap: nowrap; white-space: nowrap; }
   .hemi-grid { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); }
-  .hemi-fig { margin: 0; display: grid; gap: 12px; }
-  .hemi { width: 100%; max-width: 900px; height: auto; display: block; touch-action: manipulation; }
+  .hemi-fig { margin: 0; display: grid; gap: 12px; justify-items: center; }
+  .hemi-fig .legend { justify-self: stretch; max-width: 900px; margin-inline: auto; width: 100%; }
+  .hemi { view-transition-name: hemi; width: 100%; max-width: 900px; margin-inline: auto; height: auto; display: block; touch-action: manipulation; }
   .hemi circle { cursor: pointer; transition: fill 0.35s ease, transform 0.7s cubic-bezier(.4,0,.2,1); }
   .hemi.reel .hemi-total, .hemi.reel .hemi-sub { opacity: 0; }
   .hemi-total, .hemi-sub { transition: opacity .3s; }
