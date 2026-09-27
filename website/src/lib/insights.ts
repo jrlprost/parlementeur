@@ -114,7 +114,8 @@ export function insights(view: string, ds: Depute[], gs: Groupe[]): Block[] {
       const low = ds.filter((d) => assez(d) && (d.participation ?? 1) < 0.1);
       return [
         { kind: 'svg', question: 'Qui vote, groupe par groupe', answer: `${sw[0].label} est le groupe le plus présent aux scrutins, ${sw[sw.length - 1].label} le moins. ${low.length} députés votent moins d'une fois sur dix.`, svg: swarm(sw, { ...pctAxis, max: 0.8, ticks: [0, 0.2, 0.4, 0.6, 0.8] }), note: `${TAP} Députés présents depuis au moins 1 000 scrutins. La plupart des scrutins portent sur des amendements, souvent tard le soir.` },
-        { kind: 'names', question: 'Les dix qui votent le plus', answer: 'Part des scrutins votés.', names: top(ds.filter(assez), (d) => d.participation, 10, 'desc', fmtPct) },
+        { kind: 'names', question: 'Ceux qui font le plus voter à leur place', answer: "Part de leurs votes émis par un collègue, par délégation, alors qu'ils n'étaient pas dans l'hémicycle. Ces votes ne comptent pas comme présence.", names: top(ds.filter(assez), (d) => d.partDelegation ?? null, 10, 'desc', fmtPct) },
+        { kind: 'names', question: 'Les dix qui votent le plus', answer: 'Part des scrutins votés en personne.', names: top(ds.filter(assez), (d) => d.participation, 10, 'desc', fmtPct) },
         { kind: 'names', question: 'Les dix qui votent le moins', answer: "La présidence de l'Assemblée, qui ne vote pas, est exclue.", names: top(ds.filter(assez), (d) => d.participation, 10, 'asc', fmtPct) },
       ];
     }
