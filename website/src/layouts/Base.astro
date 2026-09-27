@@ -15,6 +15,7 @@ const canonical = new URL(Astro.url.pathname, SITE.url).href;
 const ogUrl = new URL(og, SITE.url).href;
 const nav = [
   { href: '/', label: 'Assemblée', key: 'assemblee' },
+  { href: '/agenda/', label: 'Agenda', key: 'agenda' },
   { href: '/scrutins/', label: 'Scrutins', key: 'scrutins' },
   { href: '/deputes/', label: 'Députés', key: 'deputes' },
   { href: '/lobbying/', label: 'Lobbying', key: 'lobbying' },

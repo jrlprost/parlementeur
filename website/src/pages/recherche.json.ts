@@ -10,7 +10,7 @@ export const GET: APIRoute = () => {
   for (const d of deputes) rows.push(['Député', `${d.prenom} ${d.nom}`, `${d.groupe}${d.circonscription ? ' · ' + d.circonscription : ''}`, `/deputes/${d.slug}/`]);
   for (const g of groupes) rows.push(['Groupe', g.nom, `${g.sigle} · ${g.effectif} députés`, `/deputes/?groupe=${encodeURIComponent(g.sigle)}`]);
   for (const v of VIEWS) rows.push(['Thématique', v.titre, v.label, v.id === 'groupes' ? '/' : `/vue/${v.id}/`]);
-  for (const [t, u] of [['Rejouer un vote', '/scrutins/'], ['Les 577 députés', '/deputes/'], ['Lobbying auprès des parlementaires', '/lobbying/'], ["L'hémicycle depuis 1958", '/histoire/'], ['Méthode et sources', '/methode/'], ['Coulisses du pipeline', '/coulisses/']])
+  for (const [t, u] of [["L'agenda de l'Assemblée", '/agenda/'], ['Rejouer un vote', '/scrutins/'], ['Les 577 députés', '/deputes/'], ['Lobbying auprès des parlementaires', '/lobbying/'], ["L'hémicycle depuis 1958", '/histoire/'], ['Méthode et sources', '/methode/'], ['Coulisses du pipeline', '/coulisses/']])
     rows.push(['Page', t, '', u]);
   const lobby = readOptional<Lobbying>('lobbying.json');
   for (const o of lobby?.top ?? []) rows.push(['Lobbying', o.nom, `${o.activites} actions auprès des parlementaires`, o.fiche]);

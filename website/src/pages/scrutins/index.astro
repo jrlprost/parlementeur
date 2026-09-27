@@ -57,6 +57,18 @@ const recents = idx.slice(0, 40);
   let rows: [number, string, string, number, number, number, number][] | null = null;
   const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  // Lien depuis l'agenda : /scrutins/?date=AAAA-MM-JJ affiche les scrutins de ce jour.
+  const day = new URLSearchParams(location.search).get('date');
+  if (day && /^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    fetch('/scrutins/index.json').then((r) => r.json()).then((all) => {
+      rows = all;
+      const hits = rows!.filter((r) => r[1] === day).sort((a, b) => a[0] - b[0]);
+      out.innerHTML = `<li class="muted">${hits.length} scrutin${hits.length > 1 ? 's' : ''} le ${new Date(day).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</li>` +
+        hits.map((r) => `<li><span class="pill ${r[3] ? 'ok' : 'ko'}">${r[3] ? 'Adopté' : 'Rejeté'}</span><a href="/scrutins/${r[0]}/">${esc(r[2])}</a><span class="muted small num">${r[4]} pour, ${r[5]} contre${r[6] ? ' · solennel' : ''}</span></li>`).join('');
+      out.hidden = false;
+      out.scrollIntoView({ block: 'start' });
+    });
+  }
   input.addEventListener('input', async () => {
     const q = norm(input.value.trim());
     if (q.length < 3) { out.hidden = true; return; }
