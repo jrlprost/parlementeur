@@ -1,0 +1,130 @@
+---
+// Blocs question / réponse sous l'hémicycle. Chaque barre s'ouvre sur la liste des députés concernés.
+import type { Block } from '../lib/insights';
+
+interface Props { blocks: Block[] }
+const { blocks } = Astro.props;
+const fmt = (n: number) => n.toLocaleString('fr-FR');
+const R = 42;
+const C = 2 * Math.PI * R;
+
+// Valeurs de mise en page calculées ici, pour garder le gabarit simple.
+const view = blocks.map((b) => {
+  if (b.kind === 'bars') {
+    const max = b.max ?? Math.max(...b.rows.map((r) => r.value), 1);
+    return { b, max, mk: b.marker ? `--mk:${(b.marker.value / max) * 100}%` : undefined };
+  }
+  if (b.kind === 'split') {
+    const tot = b.parts.reduce((a, p) => a + p.value, 0);
+    let acc = 0;
+    const arcs = b.parts.map((p) => {
+      const len = (p.value / tot) * C;
+      const a = { ...p, dash: `${len} ${C - len}`, off: -acc, pct: Math.round((p.value / tot) * 100) };
+      acc += len;
+      return a;
+    });
+    return { b, arcs };
+  }
+  if (b.kind === 'pairs') return { b, max: Math.max(...b.rows.map((r) => r.a + r.b), 1) };
+  return { b };
+});
+---
+<div class="insights">
+  {view.map(({ b, max, mk, arcs }: any) => (
+    <section class="card">
+      <h3>{b.question}</h3>
+      <p class="answer">{b.answer}</p>
+
+      {b.kind === 'bars' && (
+        <div class="bars" style={mk}>
+          {b.rows.map((r: any) => (
+            r.names && r.names.length ? (
+              <details class="row">
+                <summary>
+                  <span class="lbl">{r.color && <i style={`background:${r.color}`}></i>}{r.label}</span>
+                  <span class="track"><span class="fill" style={`width:${(r.value / max) * 100}%;${r.color ? `background:${r.color}` : ''}`}></span>{b.marker && <span class="mk"></span>}</span>
+                  <span class="val num">{r.display}</span>
+                </summary>
+                <ul class="names">{r.names.map((n: any) => <li><a href={`/deputes/${n.s}/`}>{n.n}</a> <span class="muted">{n.g}{n.v ? ` · ${n.v}` : ''}</span></li>)}</ul>
+              </details>
+            ) : (
+              <div class="row static">
+                <span class="lbl">{r.color && <i style={`background:${r.color}`}></i>}{r.label}</span>
+                <span class="track"><span class="fill" style={`width:${(r.value / max) * 100}%;${r.color ? `background:${r.color}` : ''}`}></span>{b.marker && <span class="mk"></span>}</span>
+                <span class="val num">{r.display}</span>
+              </div>
+            )
+          ))}
+          {b.marker && <p class="small muted">Trait vertical : {b.marker.label}.</p>}
+        </div>
+      )}
+
+      {b.kind === 'split' && (
+        <div class="split">
+          <svg viewBox="0 0 100 100" class="donut" role="img" aria-label={arcs.map((p: any) => `${p.label} ${p.value}`).join(', ')}>
+            {arcs.map((p: any) => <circle cx="50" cy="50" r={R} fill="none" stroke={p.color} stroke-width="14" stroke-dasharray={p.dash} stroke-dashoffset={p.off} transform="rotate(-90 50 50)" />)}
+          </svg>
+          <ul class="parts">
+            {arcs.map((p: any) => <li><i style={`background:${p.color}`}></i><b class="num">{fmt(p.value)}</b> {p.label.toLowerCase()} <span class="muted num">({p.pct} %)</span></li>)}
+          </ul>
+        </div>
+      )}
+
+      {b.kind === 'pairs' && (
+        <div class="pairs">
+          <p class="plegend small"><i style={`background:${b.colors[0]}`}></i>{b.legend[0]} <i style={`background:${b.colors[1]}`}></i>{b.legend[1]}</p>
+          {b.rows.map((r: any) => (
+            <div class="prow">
+              <span class="lbl">{r.color && <i style={`background:${r.color}`}></i>}{r.label}</span>
+              <span class="ptrack">
+                <span style={`width:${(r.a / max) * 100}%;background:${b.colors[0]}`}></span>
+                <span style={`width:${(r.b / max) * 100}%;background:${b.colors[1]}`}></span>
+              </span>
+              <span class="val num">{r.a} · {r.b}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {b.kind === 'names' && b.names.length > 0 && (
+        <ol class="ranked">{b.names.map((n: any) => <li><a href={`/deputes/${n.s}/`}>{n.n}</a> <span class="muted">{n.g}</span>{n.v && <b class="num">{n.v}</b>}</li>)}</ol>
+      )}
+
+      {b.note && <p class="note small muted">{b.note}</p>}
+    </section>
+  ))}
+</div>
+
+<style>
+  .insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 20px; }
+  .card { border-top: 2px solid var(--ink); padding-top: 14px; display: grid; gap: 12px; align-content: start; }
+  .card h3 { font-size: 1.3rem; }
+  .answer { color: var(--ink-80); }
+  .bars { display: grid; gap: 4px; position: relative; }
+  .row summary, .row.static { display: grid; grid-template-columns: minmax(90px, 38%) 1fr auto; gap: 10px; align-items: center; font-size: 0.9rem; padding: 4px 0; list-style: none; }
+  .row summary::-webkit-details-marker { display: none; }
+  .row summary { cursor: pointer; border-radius: 4px; }
+  .row summary:hover { background: var(--ink-4); }
+  .row summary .lbl::after { content: ' ▸'; color: var(--ink-62); font-size: 0.75em; }
+  .row[open] summary .lbl::after { content: ' ▾'; }
+  .lbl { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+  .lbl i, .parts i, .plegend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; margin-right: 6px; }
+  .track { position: relative; height: 14px; background: var(--ink-8); border-radius: 2px; overflow: visible; }
+  .fill { display: block; height: 100%; background: var(--ramp-to); border-radius: 2px; }
+  .mk { position: absolute; top: -3px; bottom: -3px; left: var(--mk); width: 2px; background: var(--ink); }
+  .val { font-size: 0.85rem; text-align: right; white-space: nowrap; }
+  .names { list-style: none; margin: 6px 0 10px; padding: 8px 12px; background: var(--ink-4); border-radius: 6px; columns: 2 200px; column-gap: 20px; font-size: 0.85rem; }
+  .names li { break-inside: avoid; padding: 2px 0; }
+  .split { display: grid; grid-template-columns: 130px 1fr; gap: 20px; align-items: center; }
+  .donut { width: 130px; height: 130px; }
+  .parts { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 1.05rem; }
+  .parts b { font-family: var(--serif); font-size: 1.6rem; }
+  .pairs { display: grid; gap: 6px; }
+  .plegend { display: flex; gap: 6px 14px; align-items: center; color: var(--ink-62); }
+  .prow { display: grid; grid-template-columns: 84px 1fr 70px; white-space: nowrap; gap: 10px; align-items: center; font-size: 0.9rem; }
+  .ptrack { display: flex; height: 14px; gap: 2px; }
+  .ptrack span { height: 100%; border-radius: 2px; }
+  .ranked { margin: 0; padding-left: 1.4em; display: grid; gap: 4px; font-size: 0.92rem; }
+  .ranked b { float: right; font-weight: 600; }
+  .note { border-left: 2px solid var(--ink-16); padding-left: 10px; }
+</style>
