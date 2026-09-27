@@ -24,6 +24,8 @@ export type Depute = {
   loyaute: number | null;
   votes: number | null;
   scrutinsPossibles?: number | null;
+  commissions?: { convocations: number; presents: number; excuses: number; absents: number; minutes: number } | null;
+  joursVote?: number;
   amendements: number;
   amendementsAdoptes: number;
   questions: number;

@@ -42,6 +42,8 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
       <div><b class="num">{fmtInt(d.questions)}</b><span>questions écrites au gouvernement{det ? `, ${fmtInt(det.questionsRepondues)} avec réponse` : ''}</span></div>
       <div><b class="num">{d.participationSolennels != null ? fmtPct(d.participationSolennels) : '–'}</b><span>des votes solennels</span></div>
       <div><b class="num">{det?.dissidences != null ? fmtInt(det.dissidences) : '–'}</b><span>votes contre la ligne de son groupe</span></div>
+      <div><b class="num">{d.commissions?.convocations ? fmtPct(d.commissions.presents / d.commissions.convocations) : '–'}</b><span>de présence en commission ({fmtInt(d.commissions?.presents ?? 0)} réunions sur {fmtInt(d.commissions?.convocations ?? 0)}, {fmtInt(Math.round((d.commissions?.minutes ?? 0) / 60))} h)</span></div>
+      <div><b class="num">{fmtInt(d.joursVote ?? 0)}</b><span>jours où il a voté en séance</span></div>
     </section>
     {d.fonction && <p class="muted">{d.fonction}{d.fonction.startsWith('Présidente') || d.fonction.startsWith('Président') ? " : préside les séances et ne prend pas part aux votes, d'où l'absence de taux de présence." : '.'}</p>}
 
