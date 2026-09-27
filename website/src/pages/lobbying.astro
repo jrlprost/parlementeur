@@ -1,0 +1,115 @@
+---
+import Base from '../layouts/Base.astro';
+import { readOptional, fmtDate, fmtInt } from '../lib/data';
+import type { Lobbying } from '../lib/lobbying';
+
+const l = readOptional<Lobbying>('lobbying.json')!;
+const maxDom = Math.max(...l.domaines.map((d) => d.n));
+const maxBen = Math.max(...l.beneficiaires.map((d) => d.n));
+const title = `${fmtInt(l.actions)} actions de lobbying auprès des parlementaires`;
+// Les noms arrivent souvent en capitales : on les remet en casse normale en gardant les sigles.
+const SMALL = new Set(['DE', 'DES', 'DU', 'LA', 'LE', 'LES', 'ET', 'EN', 'AU', 'AUX', 'POUR', 'SUR', 'PAR', 'A', "D'", "L'"]);
+const cap = (w: string) => w.charAt(0) + w.slice(1).toLowerCase();
+const nice = (s: string) =>
+  s === s.toUpperCase()
+    ? s.split(/\s+/).map((w, i) => (i > 0 && SMALL.has(w) ? w.toLowerCase() : w.length > 3 || i === 0 ? cap(w) : w)).join(' ')
+    : s;
+---
+<Base title={title} description={`Depuis le ${fmtDate(l.depuis)}, ${fmtInt(l.organisations)} organisations ont déclaré des actions pour influencer députés et sénateurs. Sur quels sujets, pour le compte de qui, avec quels budgets.`} og="/og/lobbying.png" section="lobbying">
+  <div class="stack" style="--gap:48px">
+    <header class="stack" style="--gap:12px">
+      <p class="kicker">Lobbying · répertoire de la HATVP · depuis le {fmtDate(l.depuis)}</p>
+      <h1>{fmtInt(l.actions)} actions pour influencer les parlementaires</h1>
+      <p class="lede">{fmtInt(l.organisations)} entreprises, fédérations, associations et cabinets ont déclaré avoir cherché à convaincre des députés ou des sénateurs depuis le début de la législature. Voici sur quels sujets, et pour le compte de qui.</p>
+      <p class="note">Le répertoire ne dit pas quel élu a été rencontré : la loi n'oblige les représentants d'intérêts qu'à déclarer la catégorie de responsables visés (« député, sénateur, collaborateur… »).</p>
+    </header>
+
+    <section class="stack" style="--gap:14px">
+      <h2>Les sujets les plus travaillés</h2>
+      <div class="bars">
+        {l.domaines.slice(0, 15).map((d) => (
+          <div class="bar"><span class="lbl">{d.nom}</span><div class="track"><div class="fill" style={`width:${(d.n / maxDom) * 100}%`}></div></div><span class="v num">{fmtInt(d.n)}</span></div>
+        ))}
+      </div>
+      <p class="src">Nombre d'actions déclarées par domaine d'intervention (une action peut relever de plusieurs domaines).</p>
+    </section>
+
+    <section class="stack" style="--gap:14px">
+      <h2>Pour le compte de qui</h2>
+      <p class="muted">Organisations au nom desquelles le plus d'actions ont été menées, directement ou par un cabinet de lobbying.</p>
+      <ol class="ben">
+        {l.beneficiaires.slice(0, 25).map((b) => (
+          <li>
+            <div class="bar"><span class="lbl">{nice(b.nom)}</span><div class="track"><div class="fill" style={`width:${(b.n / maxBen) * 100}%`}></div></div><span class="v num">{fmtInt(b.n)}</span></div>
+            {b.via.length > 0 && <span class="via small muted">aussi via {b.via.map(nice).join(', ')}</span>}
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <section class="stack" style="--gap:14px">
+      <h2>Les plus gros budgets déclarés</h2>
+      <p class="muted">Dépenses annuelles de lobbying déclarées, toutes cibles confondues (Parlement, gouvernement, administrations), par tranche.</p>
+      <div class="scroll">
+        <table class="tbl">
+          <thead><tr><th>Organisation</th><th>Catégorie</th><th class="r">Dépenses déclarées</th><th class="r">Actions vers le Parlement</th></tr></thead>
+          <tbody>
+            {l.gros.slice(0, 25).map((o) => (
+              <tr><td><a href={o.fiche}>{nice(o.nom)}</a></td><td class="muted small">{o.categorie}</td><td class="r num">{o.depense?.replace('> = ', '≥ ').replace(' euros', ' €').replace(' euros', ' €')}</td><td class="r num">{fmtInt(o.activites)}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="stack" style="--gap:14px">
+      <h2>Les dernières actions déclarées</h2>
+      <input id="lq" type="search" placeholder="Filtrer : un sujet, une entreprise, un texte" autocomplete="off" />
+      <ul class="acts" id="acts">
+        {l.recentes.slice(0, 400).map((r, i) => (
+          <li data-q={`${r.organisation} ${r.objet} ${r.domaines.join(' ')}`.toLowerCase()} hidden={i >= 30}>
+            <p class="small muted num">{fmtDate(r.date)} · {nice(r.organisation)}</p>
+            <p>{r.objet}</p>
+            {r.domaines.length > 0 && <p class="small muted">{r.domaines.join(' · ')}</p>}
+          </li>
+        ))}
+      </ul>
+      <p class="src">Source : <a href={l.source}>HATVP, répertoire des représentants d'intérêts (open data)</a>. Déclarations faites par les organisations elles-mêmes.</p>
+    </section>
+  </div>
+</Base>
+
+<script>
+  const q = document.querySelector<HTMLInputElement>('#lq')!;
+  const items = [...document.querySelectorAll<HTMLLIElement>('#acts li')];
+  q.addEventListener('input', () => {
+    const v = q.value.trim().toLowerCase();
+    let shown = 0;
+    for (const li of items) {
+      const ok = v ? li.dataset.q!.includes(v) : true;
+      li.hidden = !ok || shown >= (v ? 100 : 30);
+      if (!li.hidden) shown++;
+    }
+  });
+</script>
+
+<style>
+  .note { font-size: 0.92rem; color: var(--ink-62); border-left: 2px solid var(--ink-16); padding-left: 12px; }
+  .bars, .ben { display: grid; gap: 7px; font-size: 0.9rem; }
+  .ben { list-style: none; margin: 0; padding: 0; gap: 10px; }
+  .bar { display: grid; grid-template-columns: minmax(120px, 280px) 1fr 56px; gap: 12px; align-items: center; }
+  .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .track { height: 12px; background: var(--ink-8); border-radius: 2px; overflow: hidden; }
+  .fill { height: 100%; background: var(--ramp-to); }
+  .v { text-align: right; }
+  .via { display: block; padding-left: 0; }
+  @media (max-width: 600px) { .bar { grid-template-columns: 1fr 48px; } .bar .track { grid-column: 1 / -1; grid-row: 2; } }
+  .scroll { overflow-x: auto; }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 0.92rem; min-width: 620px; }
+  .tbl th { text-align: left; font-size: 0.8rem; color: var(--ink-62); border-bottom: 1px solid var(--ink-16); padding: 6px 0; font-weight: 600; }
+  .tbl td { border-bottom: 1px solid var(--ink-8); padding: 8px 0; vertical-align: top; }
+  .tbl .r { text-align: right; padding-left: 12px; white-space: nowrap; }
+  input[type='search'] { font: inherit; padding: 10px 12px; border: 1px solid var(--ink-16); border-radius: 8px; background: var(--bg); color: var(--ink); max-width: 520px; width: 100%; }
+  .acts { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+  .acts li { display: grid; gap: 2px; border-top: 1px solid var(--ink-8); padding-top: 10px; }
+</style>
