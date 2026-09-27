@@ -1,0 +1,369 @@
+---
+import Base from '../layouts/Base.astro';
+import { load } from '../lib/data';
+
+const { deputes } = load();
+// Correspondance slug → nom et groupe, pour le classement du temps de travail.
+const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom}`, d.groupe]]));
+---
+<Base title="L'agenda de l'Assemblée" description="Chaque séance publique, chaque réunion de commission et chaque vote, jour par jour : combien d'heures l'Assemblée siège, et qui est présent." og="/og/vue-participation.png" section="agenda">
+  <div class="stack" style="--gap:28px">
+    <header class="stack" style="--gap:10px">
+      <p class="kicker">Assemblée nationale · agenda officiel</p>
+      <h1>L'agenda de l'Assemblée</h1>
+      <p class="lede">Séances publiques dans l'hémicycle, réunions de commission et votes, jour par jour. Choisissez une période : les chiffres se recalculent.</p>
+    </header>
+
+    <div class="toolbar">
+      <div class="nav">
+        <button type="button" data-nav="-1" aria-label="Période précédente">‹</button>
+        <button type="button" data-nav="0">Aujourd'hui</button>
+        <button type="button" data-nav="1" aria-label="Période suivante">›</button>
+        <h2 id="label" aria-live="polite">…</h2>
+      </div>
+      <div class="seg" role="group" aria-label="Affichage">
+        <button type="button" data-mode="mois" aria-pressed="true">Mois</button>
+        <button type="button" data-mode="semaine" aria-pressed="false">Semaine</button>
+        <button type="button" data-mode="annee" aria-pressed="false">Année</button>
+      </div>
+    </div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="legend small">
+      <span><i class="k-seance"></i>Séance publique</span>
+      <span><i class="k-com"></i>Réunion de commission</span>
+      <span><i class="k-vote"></i>Scrutins publics</span>
+      <span><i class="k-futur"></i>À venir ou prévisionnel</span>
+    </div>
+
+    <div id="cal" class="cal" aria-live="polite"><p class="muted">Chargement de l'agenda…</p></div>
+
+    <aside id="detail" class="detail" hidden>
+      <button type="button" class="close" aria-label="Fermer">×</button>
+      <div class="detail-body"></div>
+    </aside>
+
+    <section class="stack" style="--gap:14px" id="travail">
+      <h2>Le temps de travail des députés</h2>
+      <p class="muted">Sur la période affichée (arrondie aux mois entiers) : heures de présence en réunion de commission, part des convocations honorées, et nombre de jours où le député a voté en séance. La présence en séance n'est pas enregistrée nominativement par l'Assemblée : les jours de vote en sont la meilleure trace publique.</p>
+      <div class="scroll">
+        <table class="tbl" id="ttable">
+          <thead>
+            <tr>
+              <th data-k="0">Député</th>
+              <th data-k="2" class="r">Heures en commission</th>
+              <th data-k="3" class="r">Présence en commission</th>
+              <th data-k="4" class="r">Jours de vote</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button type="button" id="more" class="more">Voir tous les députés</button>
+    </section>
+
+    <p class="src">Source : <a href="https://data.assemblee-nationale.fr/reunions/reunions">Assemblée nationale, agenda des réunions (open data)</a>, et scrutins publics. Les horaires sont ceux publiés à l'agenda ; la durée réelle d'une séance peut s'en écarter.</p>
+  </div>
+  <script type="application/json" id="who" set:html={JSON.stringify(who)}></script>
+</Base>
+
+<script>
+  type Ev = { t: 'seance' | 'commission' | 'autre'; d: string; m: number | null; o: string; x: string; v: number; p: number | null; c: number | null; e: string | null };
+  type Travail = { mois: string[]; deputes: Record<string, number[][]> };
+
+  const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  const JOURS = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
+  const who: Record<string, [string, string]> = JSON.parse(document.getElementById('who')!.textContent!);
+  const cal = document.getElementById('cal')!;
+  const label = document.getElementById('label')!;
+  const kpis = document.getElementById('kpis')!;
+  const detail = document.getElementById('detail')!;
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const key = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const hm = (d: Date) => (d.getHours() === 0 && d.getMinutes() === 0 ? 'journée' : `${d.getHours()}h${d.getMinutes() ? pad(d.getMinutes()) : ''}`);
+  const hours = (min: number) => (min / 60).toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+  const mondayOf = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+  const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+
+  let events: (Ev & { start: Date; end: Date })[] = [];
+  let byDay = new Map<string, (Ev & { start: Date; end: Date })[]>();
+  let travail: Travail | null = null;
+  const today = new Date();
+  let mode: 'mois' | 'semaine' | 'annee' = 'mois';
+  let cursor = new Date(today);
+  let showAll = false;
+  let sortKey = 2;
+  let sortDir = -1;
+
+  // Période couverte par l'affichage courant.
+  function range(): [Date, Date] {
+    if (mode === 'semaine') { const s = mondayOf(cursor); return [s, addDays(s, 7)]; }
+    if (mode === 'annee') return [new Date(cursor.getFullYear(), 0, 1), new Date(cursor.getFullYear() + 1, 0, 1)];
+    return [new Date(cursor.getFullYear(), cursor.getMonth(), 1), new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)];
+  }
+
+  function renderKpis(a: Date, b: Date) {
+    const sel = events.filter((e) => e.start >= a && e.start < b);
+    const seances = sel.filter((e) => e.t === 'seance');
+    const coms = sel.filter((e) => e.t === 'commission');
+    const minS = seances.reduce((s, e) => s + (e.m ?? 0), 0);
+    const minC = coms.reduce((s, e) => s + (e.m ?? 0), 0);
+    const votes = seances.reduce((s, e) => s + e.v, 0);
+    const jours = new Set(seances.map((e) => key(e.start))).size;
+    const joursVote = new Set(seances.filter((e) => e.v > 0).map((e) => key(e.start))).size;
+    const k = (v: string, l: string) => `<div><b class="num">${v}</b><span>${l}</span></div>`;
+    kpis.innerHTML =
+      k(String(jours), `jour${jours > 1 ? 's' : ''} de séance publique`) +
+      k(`${hours(minS)} h`, `en séance (${seances.length} séances)`) +
+      k(`${hours(minC)} h`, `de réunions de commission (${coms.length})`) +
+      k(votes.toLocaleString('fr-FR'), `scrutins publics, sur ${joursVote} jour${joursVote > 1 ? 's' : ''}`);
+  }
+
+  function chip(e: Ev & { start: Date }, compact = false) {
+    const futur = e.start > today || e.e ? ' futur' : '';
+    const cls = e.t === 'seance' ? 'c-seance' : 'c-com';
+    const vote = e.v ? ` <span class="vb">${e.v} vote${e.v > 1 ? 's' : ''}</span>` : '';
+    const lbl = e.t === 'seance' ? 'Séance' : esc(e.o.replace(/^Commission (des |de la |de l'|du )?/i, '').slice(0, compact ? 22 : 60));
+    return `<button type="button" class="chip ${cls}${futur}" data-i="${events.indexOf(e as never)}">${hm(e.start)} ${lbl}${vote}</button>`;
+  }
+
+  function renderMonth() {
+    const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+    const start = mondayOf(first);
+    let html = '<div class="month">' + JOURS.map((j) => `<div class="dow">${j}</div>`).join('');
+    for (let i = 0; i < 42; i++) {
+      const d = addDays(start, i);
+      if (i >= 35 && d.getMonth() !== cursor.getMonth()) break;
+      const evs = byDay.get(key(d)) ?? [];
+      const seances = evs.filter((e) => e.t === 'seance');
+      const coms = evs.filter((e) => e.t !== 'seance');
+      const out = d.getMonth() !== cursor.getMonth() ? ' out' : '';
+      const isToday = key(d) === key(today) ? ' today' : '';
+      html += `<div class="day${out}${isToday}"><button type="button" class="dnum" data-day="${key(d)}">${d.getDate()}</button>` +
+        seances.map((e) => chip(e, true)).join('') +
+        (coms.length ? `<button type="button" class="more-com" data-day="${key(d)}">${coms.length} réunion${coms.length > 1 ? 's' : ''} de commission</button>` : '') +
+        '</div>';
+    }
+    cal.innerHTML = html + '</div>';
+    label.textContent = `${MOIS[cursor.getMonth()].replace(/^./, (c) => c.toUpperCase())} ${cursor.getFullYear()}`;
+  }
+
+  function renderWeek() {
+    const start = mondayOf(cursor);
+    const H0 = 8, H1 = 25;
+    const pxh = 44;
+    let cols = '';
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(start, i);
+      const evs = (byDay.get(key(d)) ?? []).slice().sort((a, b) => +a.start - +b.start);
+      // Les séances publiques ont leur propre bande à gauche ; les commissions se partagent le reste.
+      const seances = evs.filter((e) => e.t === 'seance');
+      const others = evs.filter((e) => e.t !== 'seance');
+      const zoneS = seances.length ? (others.length ? 0.42 : 1) : 0;
+      const layout = (list: typeof evs, x0: number, w: number) => {
+        const lanes: Date[] = [];
+        const placed = list.map((e) => {
+          let l = lanes.findIndex((end) => end <= e.start);
+          if (l < 0) { l = lanes.length; lanes.push(e.end); } else lanes[l] = e.end;
+          return { e, l };
+        });
+        const n = Math.max(1, lanes.length);
+        return placed.map(({ e, l }) => ({ e, left: x0 + (l / n) * w, width: w / n }));
+      };
+      const blocks = [...layout(seances, 0, zoneS), ...layout(others, zoneS, 1 - zoneS)].map(({ e, left, width }) => {
+        const sh = e.start.getHours() + e.start.getMinutes() / 60;
+        const noTime = sh === 0;
+        const top = noTime ? 0 : Math.max(0, (sh - H0) * pxh);
+        const dur = (e.end.getTime() - e.start.getTime()) / 3600000;
+        const h = noTime ? 20 : Math.max(18, Math.min(H1 - Math.max(sh, H0), dur) * pxh);
+        const futur = e.start > today || e.e ? ' futur' : '';
+        const cls = e.t === 'seance' ? 'c-seance' : 'c-com';
+        const time = noTime ? 'horaire non précisé' : hm(e.start);
+        return `<button type="button" class="blk ${cls}${futur}" data-i="${events.indexOf(e)}" title="${esc(`${time} · ${e.t === 'seance' ? 'Séance publique' : e.o}`)}" style="top:${top}px;height:${h}px;left:${left * 100}%;width:${width * 100}%"><b>${time}</b> ${esc(e.t === 'seance' ? 'Séance publique' : e.o)}${e.v ? `<span class="vb">${e.v} votes</span>` : ''}</button>`;
+      }).join('');
+      const isToday = key(d) === key(today) ? ' today' : '';
+      cols += `<div class="wcol"><div class="whead${isToday}">${JOURS[i]} ${d.getDate()}</div><div class="wbody" style="height:${(H1 - H0) * pxh}px">${blocks}</div></div>`;
+    }
+    const hoursCol = Array.from({ length: H1 - H0 }, (_, i) => `<div style="height:${pxh}px">${(H0 + i) % 24}h</div>`).join('');
+    cal.innerHTML = `<div class="week"><div class="whours"><div class="whead"></div>${hoursCol}</div>${cols}</div>`;
+    const end = addDays(start, 6);
+    label.textContent = `Semaine du ${start.getDate()} ${MOIS[start.getMonth()]} au ${end.getDate()} ${MOIS[end.getMonth()]} ${end.getFullYear()}`;
+  }
+
+  function renderYear() {
+    const y = cursor.getFullYear();
+    let html = '<div class="year">';
+    for (let m = 0; m < 12; m++) {
+      const first = new Date(y, m, 1);
+      const start = mondayOf(first);
+      let cells = '';
+      for (let i = 0; i < 42; i++) {
+        const d = addDays(start, i);
+        if (d.getMonth() !== m) { cells += '<span class="yc empty"></span>'; continue; }
+        const evs = byDay.get(key(d)) ?? [];
+        const min = evs.reduce((s, e) => s + (e.t === 'seance' ? e.m ?? 0 : 0), 0);
+        const vote = evs.some((e) => e.v > 0);
+        const t = Math.min(1, min / 720);
+        cells += `<button type="button" class="yc${vote ? ' voted' : ''}" data-day="${key(d)}" title="${d.getDate()} ${MOIS[m]} : ${hours(min)} h de séance${vote ? ', avec votes' : ''}" style="background:${min ? `color-mix(in srgb, var(--ramp-to) ${Math.round(20 + t * 80)}%, var(--ramp-from))` : 'var(--ink-4)'}"></button>`;
+      }
+      html += `<div class="ym"><button type="button" class="ymt" data-month="${m}">${MOIS[m]}</button><div class="ygrid">${cells}</div></div>`;
+    }
+    cal.innerHTML = html + '</div><p class="small muted">Intensité : heures de séance publique dans la journée. Contour : jour avec au moins un scrutin public.</p>';
+    label.textContent = String(y);
+  }
+
+  function renderTravail(a: Date, b: Date) {
+    if (!travail) return;
+    const from = `${a.getFullYear()}-${pad(a.getMonth() + 1)}`;
+    const last = new Date(b.getTime() - 1);
+    const to = `${last.getFullYear()}-${pad(last.getMonth() + 1)}`;
+    const idx = travail.mois.map((m, i) => (m >= from && m <= to ? i : -1)).filter((i) => i >= 0);
+    const rows = Object.entries(travail.deputes).map(([slug, arr]) => {
+      let conv = 0, pres = 0, min = 0, jours = 0;
+      for (const i of idx) { conv += arr[i][0]; pres += arr[i][1]; min += arr[i][2]; jours += arr[i][3]; }
+      return [slug, conv, min, conv ? pres / conv : -1, jours] as [string, number, number, number, number];
+    });
+    rows.sort((x, y) => (sortKey === 0 ? who[x[0]][0].localeCompare(who[y[0]][0], 'fr') * -sortDir : (x[sortKey] - y[sortKey]) * sortDir));
+    const shown = showAll ? rows : rows.slice(0, 20);
+    document.querySelector('#ttable tbody')!.innerHTML = shown
+      .map(([slug, conv, min, rate, jours]) => `<tr><td><a href="/deputes/${slug}/">${esc(who[slug][0])}</a> <span class="muted small">${esc(who[slug][1])}</span></td><td class="r num">${hours(min)} h</td><td class="r num">${rate < 0 ? '–' : Math.round(rate * 100) + ' %'} <span class="muted small">(${conv})</span></td><td class="r num">${jours}</td></tr>`)
+      .join('');
+    document.getElementById('more')!.textContent = showAll ? 'Réduire' : `Voir les ${rows.length} députés`;
+    document.querySelectorAll<HTMLElement>('#ttable th').forEach((th) => th.setAttribute('aria-sort', Number(th.dataset.k) === sortKey ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'));
+  }
+
+  function render() {
+    detail.hidden = true;
+    if (mode === 'mois') renderMonth(); else if (mode === 'semaine') renderWeek(); else renderYear();
+    const [a, b] = range();
+    renderKpis(a, b);
+    renderTravail(a, b);
+    document.querySelectorAll('[data-mode]').forEach((x) => x.setAttribute('aria-pressed', String((x as HTMLElement).dataset.mode === mode)));
+  }
+
+  function openEvent(i: number) {
+    const e = events[i];
+    const dur = e.m ? `${Math.floor(e.m / 60)} h ${pad(e.m % 60)}` : 'durée non publiée';
+    const pres = e.c ? `<p>${e.p} députés présents sur ${e.c} convoqués.</p>` : '';
+    const votes = e.v ? `<p><a href="/scrutins/?date=${key(e.start)}">${e.v} scrutin${e.v > 1 ? 's' : ''} public${e.v > 1 ? 's' : ''} ce jour-là →</a></p>` : '';
+    detail.querySelector('.detail-body')!.innerHTML = `<p class="kicker">${e.t === 'seance' ? 'Séance publique' : 'Réunion'}${e.start > today || e.e ? ' · à venir' : ''}</p><h3>${esc(e.o || 'Réunion')}</h3><p class="muted">${JOURS[(e.start.getDay() + 6) % 7]} ${e.start.getDate()} ${MOIS[e.start.getMonth()]} ${e.start.getFullYear()}, ${hm(e.start)} · ${dur}</p>${e.x ? `<p>${esc(e.x)}</p>` : ''}${pres}${votes}`;
+    detail.hidden = false;
+    detail.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  cal.addEventListener('click', (ev) => {
+    const t = ev.target as HTMLElement;
+    const btn = t.closest<HTMLElement>('[data-i],[data-day],[data-month]');
+    if (!btn) return;
+    if (btn.dataset.i) openEvent(Number(btn.dataset.i));
+    else if (btn.dataset.day) { const [y, m, d] = btn.dataset.day.split('-').map(Number); cursor = new Date(y, m - 1, d); mode = 'semaine'; render(); }
+    else if (btn.dataset.month) { cursor = new Date(cursor.getFullYear(), Number(btn.dataset.month), 1); mode = 'mois'; render(); }
+  });
+  detail.querySelector('.close')!.addEventListener('click', () => (detail.hidden = true));
+  document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => b.addEventListener('click', () => { mode = b.dataset.mode as typeof mode; render(); }));
+  document.querySelectorAll<HTMLButtonElement>('[data-nav]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const n = Number(b.dataset.nav);
+      if (n === 0) cursor = new Date(today);
+      else if (mode === 'semaine') cursor = addDays(cursor, 7 * n);
+      else if (mode === 'annee') cursor = new Date(cursor.getFullYear() + n, 0, 1);
+      else cursor = new Date(cursor.getFullYear(), cursor.getMonth() + n, 1);
+      render();
+    }),
+  );
+  document.querySelectorAll<HTMLElement>('#ttable th').forEach((th) =>
+    th.addEventListener('click', () => {
+      const k = Number(th.dataset.k);
+      sortDir = sortKey === k ? -sortDir : k === 0 ? 1 : -1;
+      sortKey = k;
+      render();
+    }),
+  );
+  document.getElementById('more')!.addEventListener('click', () => { showAll = !showAll; render(); });
+
+  Promise.all([fetch('/agenda.json').then((r) => r.json()), fetch('/travail.json').then((r) => r.json())]).then(([ev, tr]: [Ev[], Travail]) => {
+    events = ev.map((e) => {
+      const start = new Date(e.d);
+      return { ...e, start, end: new Date(start.getTime() + (e.m ?? 120) * 60000) };
+    });
+    byDay = new Map();
+    for (const e of events) {
+      const k = key(e.start);
+      if (!byDay.has(k)) byDay.set(k, []);
+      byDay.get(k)!.push(e);
+    }
+    travail = tr;
+    // Sans séance ce mois-ci (vacances parlementaires), on ouvre sur le dernier mois actif.
+    const monthKey = key(today).slice(0, 7);
+    if (!events.some((e) => e.t === 'seance' && e.d.startsWith(monthKey))) {
+      const lastPast = [...events].reverse().find((e) => e.t === 'seance' && e.start <= today);
+      if (lastPast) cursor = new Date(lastPast.start);
+    }
+    render();
+  });
+</script>
+
+<style>
+  .toolbar { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; }
+  .nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .nav button { border: 1px solid var(--ink-16); background: var(--bg); border-radius: 8px; padding: 6px 12px; }
+  .nav h2 { font-size: var(--step-2); margin-left: 8px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; }
+  .kpis :global(div) { border-top: 2px solid var(--ink); padding-top: 8px; display: grid; }
+  .kpis :global(b) { font-family: var(--serif); font-size: 2rem; font-weight: 600; line-height: 1.1; }
+  .kpis :global(span) { font-size: 0.85rem; color: var(--ink-62); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--ink-62); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 14px; height: 10px; border-radius: 2px; display: inline-block; }
+  .k-seance { background: var(--ink); }
+  .k-com { background: color-mix(in srgb, var(--ramp-to) 22%, var(--bg)); border: 1px solid color-mix(in srgb, var(--ramp-to) 45%, var(--bg)); }
+  .k-vote { background: var(--vote-pour); }
+  .k-futur { border: 1px dashed var(--ink-62); }
+
+  .cal { overflow-x: auto; }
+  .cal :global(.month) { display: grid; grid-template-columns: repeat(7, minmax(110px, 1fr)); border-left: 1px solid var(--ink-8); border-top: 1px solid var(--ink-8); min-width: 770px; }
+  .cal :global(.dow) { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-62); padding: 6px 8px; border-right: 1px solid var(--ink-8); border-bottom: 1px solid var(--ink-8); }
+  .cal :global(.day) { min-height: 110px; padding: 4px; border-right: 1px solid var(--ink-8); border-bottom: 1px solid var(--ink-8); display: flex; flex-direction: column; gap: 3px; }
+  .cal :global(.day.out) { background: var(--ink-4); }
+  .cal :global(.day.out > *) { opacity: 0.5; }
+  .cal :global(.dnum) { align-self: flex-start; background: none; border: 0; font-size: 0.85rem; padding: 2px 6px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+  .cal :global(.today .dnum), .cal :global(.whead.today) { background: var(--ink); color: var(--bg); }
+  .cal :global(.chip) { text-align: left; border: 0; border-radius: 4px; padding: 3px 6px; font-size: 0.76rem; line-height: 1.25; }
+  .cal :global(.c-seance) { background: var(--ink); color: var(--bg); }
+  .cal :global(.c-com) { background: color-mix(in srgb, var(--ramp-to) 18%, var(--bg)); color: var(--ink); border: 1px solid color-mix(in srgb, var(--ramp-to) 40%, var(--bg)); }
+  .cal :global(.futur) { background: transparent; color: var(--ink); border: 1px dashed var(--ink-62); }
+  .cal :global(.vb) { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 999px; background: var(--vote-pour); color: #fff; font-size: 0.7rem; }
+  .cal :global(.more-com) { text-align: left; border: 0; background: none; font-size: 0.75rem; color: var(--ink-62); padding: 2px 4px; text-decoration: underline; text-underline-offset: 2px; }
+
+  .cal :global(.week) { display: grid; grid-template-columns: 44px repeat(7, minmax(110px, 1fr)); min-width: 820px; }
+  .cal :global(.whours) { font-size: 0.72rem; color: var(--ink-62); text-align: right; padding-right: 6px; }
+  .cal :global(.whours > div:not(.whead)) { border-top: 1px solid transparent; transform: translateY(-0.6em); }
+  .cal :global(.whead) { height: 34px; display: grid; place-items: center; font-size: 0.85rem; border-bottom: 1px solid var(--ink-16); border-radius: 6px 6px 0 0; }
+  .cal :global(.wcol) { border-left: 1px solid var(--ink-8); }
+  .cal :global(.wbody) { position: relative; background-image: repeating-linear-gradient(to bottom, var(--ink-8) 0 1px, transparent 1px 44px); }
+  .cal :global(.blk) { position: absolute; overflow: hidden; text-align: left; font-size: 0.72rem; line-height: 1.2; padding: 3px 4px; border-radius: 4px; border: 1px solid var(--bg); }
+  .cal :global(.blk.c-com) { border: 1px solid color-mix(in srgb, var(--ramp-to) 40%, var(--bg)); }
+
+  .cal :global(.year) { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 20px; }
+  .cal :global(.ymt) { background: none; border: 0; font-weight: 600; text-transform: capitalize; padding: 0 0 6px; }
+  .cal :global(.ygrid) { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal :global(.yc) { aspect-ratio: 1; border: 0; border-radius: 3px; padding: 0; }
+  .cal :global(.yc.empty) { background: transparent; }
+  .cal :global(.yc.voted) { outline: 1.5px solid var(--vote-pour); outline-offset: -1.5px; }
+
+  .detail { position: relative; border: 1px solid var(--ink-16); border-radius: 10px; padding: 18px 20px; display: grid; gap: 8px; max-width: 720px; }
+  .detail :global(h3) { font-size: 1.4rem; padding-right: 30px; }
+  .detail :global(p) { margin: 0; }
+  .close { position: absolute; top: 8px; right: 10px; background: none; border: 0; font-size: 1.5rem; color: var(--ink-62); }
+
+  .scroll { overflow-x: auto; }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 0.92rem; min-width: 560px; }
+  .tbl th { text-align: left; font-size: 0.8rem; color: var(--ink-62); border-bottom: 1px solid var(--ink-16); padding: 6px 0; font-weight: 600; cursor: pointer; }
+  .tbl th[aria-sort='ascending']::after { content: ' ↑'; }
+  .tbl th[aria-sort='descending']::after { content: ' ↓'; }
+  .tbl :global(td) { border-bottom: 1px solid var(--ink-8); padding: 7px 0; }
+  .tbl .r, .tbl :global(.r) { text-align: right; padding-left: 12px; white-space: nowrap; }
+  .more { justify-self: start; border: 1px solid var(--ink-16); background: var(--bg); border-radius: 8px; padding: 7px 14px; }
+</style>
