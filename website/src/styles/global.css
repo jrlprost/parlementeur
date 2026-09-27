@@ -81,7 +81,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .num { font-variant-numeric: tabular-nums; }
 
 .wrap { max-width: var(--max); margin-inline: auto; }
-.stack { display: grid; gap: var(--gap, 1rem); }
+.stack { display: grid; gap: var(--gap, 1rem); grid-template-columns: minmax(0, 1fr); }
+.stack > * { min-width: 0; }
+p, li, dd, td, summary { overflow-wrap: anywhere; }
 .kicker { max-width: none; font-size: var(--step--1); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; color: var(--ink-62); }
 .lede { font-size: var(--step-1); color: var(--ink-80); }
 .muted { color: var(--ink-62); }

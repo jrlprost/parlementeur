@@ -383,7 +383,7 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
   .nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .nav button { border: 1px solid var(--ink-16); background: var(--bg); border-radius: 8px; padding: 6px 12px; }
   .nav h2 { font-size: var(--step-2); margin-left: 8px; }
-  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 16px; }
   .kpis :global(div) { border-top: 2px solid var(--ink); padding-top: 8px; display: grid; }
   .kpis :global(b) { font-family: var(--serif); font-size: 2rem; font-weight: 600; line-height: 1.1; }
   .kpis :global(span) { font-size: 0.85rem; color: var(--ink-62); }
