@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import zipfile
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from .common import AN_BASE, as_list, fetch, log, val
 
@@ -37,7 +37,7 @@ def _objets(r: dict) -> list[str]:
     return [o for o in out if not (o in seen or seen.add(o))]
 
 
-def load(organe_names: dict[str, str], scrutins: list[dict], deputy_ids: set[str]):
+def load(organe_names: dict[str, str], scrutins: list[dict], deputy_ids: set[str], reels: dict[str, dict] | None = None):
     """Renvoie (événements publiés, statistiques de présence en commission par député)."""
     z = zipfile.ZipFile(fetch(AGENDA, "an17_agenda.json.zip", max_age_h=0.9))
     votes_by_seance: dict[str, int] = defaultdict(int)
@@ -84,8 +84,14 @@ def load(organe_names: dict[str, str], scrutins: list[dict], deputy_ids: set[str
                 else:
                     st["absents"] += 1
         organe = organe_names.get(r.get("organeReuniRef") or "", "")
+        reel = (reels or {}).get(r["uid"]) if kind == "seance" else None
+        # Séance passée sans compte rendu, sans vote et sans heure de fin : prévue mais jamais tenue.
+        if kind == "seance" and reels and not reel and not votes_by_seance.get(r["uid"]) and minutes is None and debut.date() < datetime.now(debut.tzinfo).date() - timedelta(days=10):
+            continue
         events.append(
             {
+                # Heures réelles tirées du compte rendu : ouverture, durée totale, minutes de suspension.
+                **({"ro": reel["ouverture"], "rm": reel["minutes"], "rs": reel["suspensions_minutes"]} if reel else {}),
                 "t": kind,
                 "d": debut.isoformat(timespec="minutes"),
                 "m": minutes,
