@@ -1,0 +1,61 @@
+name: Publier
+
+on:
+  schedule:
+    # Chaque nuit à 3 h (heure de Paris, UTC+2 l'été).
+    - cron: "0 1 * * *"
+    # Toutes les heures du lundi au jeudi, de 9 h à 23 h : les jours de séance.
+    - cron: "0 7-21 * * 1-4"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: publier
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: database/uv.lock
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+
+      - name: Cache des données brutes
+        uses: actions/cache@v4
+        with:
+          path: database/data/raw
+          key: raw-${{ github.run_id }}
+          restore-keys: raw-
+
+      - name: Pipeline de données
+        working-directory: database
+        run: uv run parlementeur
+
+      - name: Construction du site
+        working-directory: website
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Mise en ligne
+        working-directory: website
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 pages deploy dist --project-name parlementeur --branch main --commit-dirty=true
