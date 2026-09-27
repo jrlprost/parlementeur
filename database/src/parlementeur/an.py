@@ -39,7 +39,7 @@ def _ordinal_circo(n: str) -> str:
 
 def load_amo():
     """Députés en exercice, leurs groupes, et leurs mandats (historique limité à ce que publie l'AN)."""
-    p10 = fetch(AMO10, f"an{LEGISLATURE}_amo10.json.zip")
+    p10 = fetch(AMO10, f"an{LEGISLATURE}_amo10.json.zip", max_age_h=0.9)
     z = zipfile.ZipFile(p10)
     organes: dict[str, dict] = {}
     acteurs: list[dict] = []
@@ -182,7 +182,7 @@ VOTE_KEYS = {"pours": "p", "contres": "c", "abstentions": "a", "nonVotants": "n"
 
 def load_scrutins():
     """Tous les scrutins publics de la législature, avec le vote nominatif de chaque député."""
-    p = fetch(SCRUTINS, f"an{LEGISLATURE}_scrutins.json.zip")
+    p = fetch(SCRUTINS, f"an{LEGISLATURE}_scrutins.json.zip", max_age_h=0.9)
     z = zipfile.ZipFile(p)
     scrutins = []
     for n in z.namelist():
