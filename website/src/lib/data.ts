@@ -26,6 +26,7 @@ export type Depute = {
   scrutinsPossibles?: number | null;
   commissions?: { convocations: number; presents: number; excuses: number; absents: number; minutes: number } | null;
   joursVote?: number;
+  interventions?: number;
   amendements: number;
   amendementsAdoptes: number;
   questions: number;

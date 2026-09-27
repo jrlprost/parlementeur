@@ -46,8 +46,8 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
 
     <section class="stack" style="--gap:14px" id="travail">
       <h2>Le temps de travail des députés</h2>
-      <p class="muted">Heures par semaine : sur la période affichée (arrondie aux mois entiers), heures de présence en commission et durée réelle des séances publiques où le député a voté ou siégé, divisées par le nombre de semaines où l'Assemblée a siégé depuis son élection. Une semaine de séance sans aucune trace de sa présence compte zéro.</p>
-      <p class="muted small">Limites : l'Assemblée n'enregistre pas nominativement la présence en séance. Voter une fois pendant une séance compte pour toute la séance, et un député présent qui ne vote pas n'est pas compté. Le travail en circonscription, en réunion de groupe ou en audition hors commission n'apparaît dans aucune donnée publique.</p>
+      <p class="muted">Heures par semaine : temps de présence en commission et temps de présence estimé en séance publique, divisés par le nombre de semaines où l'Assemblée a siégé depuis l'élection du député. Une semaine de séance sans aucune trace de présence compte zéro.</p>
+      <p class="muted small">Comment la présence en séance est estimée : l'Assemblée ne tient pas de registre de présence dans l'hémicycle, contrairement aux commissions. Pour chaque séance, on retient la plus grande de deux preuves publiques : la part des scrutins de la séance auxquels le député a pris part (5 votes sur 50 donnent 10 % de la durée), ou l'intervalle entre sa première et sa dernière prise de parole au compte rendu. La durée est celle, réelle, du compte rendu, suspensions déduites. C'est une estimation basse : un député présent qui ne vote ni ne parle n'est pas compté. Le travail en circonscription ou en réunion de groupe n'apparaît dans aucune donnée publique.</p>
       <div class="scroll">
         <table class="tbl" id="ttable">
           <thead>
