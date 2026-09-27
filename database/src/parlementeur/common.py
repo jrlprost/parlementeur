@@ -38,8 +38,21 @@ def fetch(url: str, name: str, max_age_h: float = 20) -> Path:
         with tmp.open("wb") as f:
             for chunk in r.iter_bytes(1 << 20):
                 f.write(chunk)
+        last_modified = r.headers.get("last-modified")
     tmp.replace(dest)
+    (RAW / f"{name}.meta.json").write_text(json.dumps({"url": url, "fetchedAt": now_iso(), "lastModified": last_modified}))
     return dest
+
+
+def fetch_info(name: str) -> dict:
+    """Date de récupération, date de publication annoncée par le serveur et taille d'un fichier brut."""
+    f = RAW / name
+    meta_path = RAW / f"{name}.meta.json"
+    info = json.loads(meta_path.read_text()) if meta_path.exists() else {}
+    if f.exists():
+        info["bytes"] = f.stat().st_size
+        info.setdefault("fetchedAt", datetime.fromtimestamp(f.stat().st_mtime, timezone.utc).isoformat(timespec="seconds"))
+    return info
 
 
 def as_list(x: Any) -> list:

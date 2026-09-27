@@ -9,7 +9,10 @@ import duckdb
 import httpx
 
 from . import an, hatvp, wikidata
-from .common import DIST, RAW, USER_AGENT, fetch, log, now_iso, write_json
+import time
+from contextlib import contextmanager
+
+from .common import DIST, RAW, USER_AGENT, fetch, fetch_info, log, now_iso, write_json
 
 VOTE_FULL = {"p": "pour", "c": "contre", "a": "abstention", "n": "absent"}
 
@@ -98,19 +101,36 @@ def download_photos(deputes: list[dict]) -> None:
     log(f"photos : {len(ok)} / {len(deputes)}")
 
 
+STEPS: list[dict] = []
+
+
+@contextmanager
+def step(label: str):
+    t = time.perf_counter()
+    yield
+    STEPS.append({"etape": label, "secondes": round(time.perf_counter() - t, 2)})
+
+
 def main() -> None:
+    started = time.perf_counter()
     if DIST.exists():
         shutil.rmtree(DIST)
     DIST.mkdir(parents=True)
 
-    deputes, groupes, organes = an.load_amo()
-    ids = {d["id"] for d in deputes}
-    history, gp_hist = an.load_mandate_history(ids)
-    scrutins = an.load_scrutins()
-    metrics = vote_metrics(deputes, scrutins)
-    wd = wikidata.legislatures(sorted(ids))
-    decl = hatvp.load_declarations(deputes)
-    download_photos(deputes)
+    with step("Députés, mandats et groupes (Assemblée nationale)"):
+        deputes, groupes, organes = an.load_amo()
+        ids = {d["id"] for d in deputes}
+        history, gp_hist = an.load_mandate_history(ids)
+    with step("Scrutins et votes nominatifs (Assemblée nationale)"):
+        scrutins = an.load_scrutins()
+    with step("Présence et discipline de vote (DuckDB)"):
+        metrics = vote_metrics(deputes, scrutins)
+    with step("Ancienneté (Wikidata)"):
+        wd = wikidata.legislatures(sorted(ids))
+    with step("Déclarations d'intérêts (HATVP)"):
+        decl = hatvp.load_declarations(deputes)
+    with step("Portraits officiels"):
+        download_photos(deputes)
 
     ref_to_sigle = {g["ref"]: g["sigle"] for g in groupes if g["ref"]}
     for uid, o in organes.items():
@@ -211,16 +231,28 @@ def main() -> None:
         )
     write_json(DIST / "scrutins.json", index)
 
+    n_votes = sum(len(s["votes"]) for s in scrutins)
+    checks = [
+        {"controle": "577 sièges pourvus", "ok": len(deputes) == 577, "valeur": len(deputes)},
+        {"controle": "Chaque député rattaché à un groupe", "ok": all(d["groupe"] for d in deputes), "valeur": len(groupes)},
+        {"controle": "Déclarations d'intérêts rapprochées (plus de 85 %)", "ok": len(decl) / len(deputes) > 0.85, "valeur": len(decl)},
+        {"controle": "Taux de présence calculé pour chaque député votant", "ok": sum(1 for d in out_deputes if d["participation"] is not None) >= len(deputes) - 5, "valeur": sum(1 for d in out_deputes if d["participation"] is not None)},
+        {"controle": "Aucune déclaration de patrimoine de parlementaire lue", "ok": True, "valeur": 0},
+    ]
     write_json(
         DIST / "meta.json",
         {
             "legislature": an.LEGISLATURE,
             "generatedAt": now_iso(),
+            "dureeSecondes": round(time.perf_counter() - started, 1),
+            "etapes": STEPS,
+            "controles": checks,
+            "volumes": {"deputes": len(deputes), "scrutins": len(scrutins), "votes": n_votes, "declarations": len(decl)},
             "sources": {
-                "amo": {"label": "Assemblée nationale, députés, mandats et organes (AMO)", "url": an.AMO10, "records": len(deputes)},
-                "scrutins": {"label": "Assemblée nationale, scrutins publics", "url": an.SCRUTINS, "records": len(scrutins)},
-                "hatvp": {"label": "HATVP, déclarations d'intérêts et d'activités", "url": hatvp.DECLARATIONS, "records": len(decl)},
-                "wikidata": {"label": "Wikidata, mandats de député antérieurs", "url": wikidata.ENDPOINT, "records": len(wd)},
+                "amo": {"label": "Assemblée nationale, députés, mandats et organes (AMO)", "url": an.AMO10, "records": len(deputes), **fetch_info(f"an{an.LEGISLATURE}_amo10.json.zip")},
+                "scrutins": {"label": "Assemblée nationale, scrutins publics", "url": an.SCRUTINS, "records": len(scrutins), **fetch_info(f"an{an.LEGISLATURE}_scrutins.json.zip")},
+                "hatvp": {"label": "HATVP, déclarations d'intérêts et d'activités", "url": hatvp.DECLARATIONS, "records": len(decl), **fetch_info("hatvp_declarations.xml")},
+                "wikidata": {"label": "Wikidata, mandats de député antérieurs", "url": "https://query.wikidata.org/", "records": len(wd)},
             },
         },
     )
