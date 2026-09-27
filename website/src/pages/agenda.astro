@@ -46,12 +46,14 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
 
     <section class="stack" style="--gap:14px" id="travail">
       <h2>Le temps de travail des députés</h2>
-      <p class="muted">Sur la période affichée (arrondie aux mois entiers) : heures de présence en réunion de commission, part des convocations honorées, et nombre de jours où le député a voté en séance. La présence en séance n'est pas enregistrée nominativement par l'Assemblée : les jours de vote en sont la meilleure trace publique.</p>
+      <p class="muted">Heures par semaine : sur la période affichée (arrondie aux mois entiers), heures de présence en commission et durée réelle des séances publiques où le député a voté ou siégé, divisées par le nombre de semaines où l'Assemblée a siégé depuis son élection. Une semaine de séance sans aucune trace de sa présence compte zéro.</p>
+      <p class="muted small">Limites : l'Assemblée n'enregistre pas nominativement la présence en séance. Voter une fois pendant une séance compte pour toute la séance, et un député présent qui ne vote pas n'est pas compté. Le travail en circonscription, en réunion de groupe ou en audition hors commission n'apparaît dans aucune donnée publique.</p>
       <div class="scroll">
         <table class="tbl" id="ttable">
           <thead>
             <tr>
               <th data-k="0">Député</th>
+              <th data-k="5" class="r">Heures par semaine</th>
               <th data-k="2" class="r">Heures en commission</th>
               <th data-k="3" class="r">Présence en commission</th>
               <th data-k="4" class="r">Jours de vote</th>
@@ -70,7 +72,7 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
 
 <script>
   type Ev = { t: 'seance' | 'commission' | 'autre'; d: string; m: number | null; o: string; x: string; v: number; p: number | null; c: number | null; e: string | null; ro?: string; rm?: number; rs?: number };
-  type Travail = { mois: string[]; deputes: Record<string, number[][]> };
+  type Travail = { mois: string[]; semaines: Record<string, string[]>; debut: Record<string, string>; deputes: Record<string, number[][]> };
 
   const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
   const JOURS = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
@@ -96,7 +98,7 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
   let showAll = false;
   const small = () => window.matchMedia('(max-width: 700px)').matches;
   let selectedDay = key(today);
-  let sortKey = 2;
+  let sortKey = 5;
   let sortDir = -1;
 
   // Période couverte par l'affichage courant.
@@ -270,15 +272,25 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
     const last = new Date(b.getTime() - 1);
     const to = `${last.getFullYear()}-${pad(last.getMonth() + 1)}`;
     const idx = travail.mois.map((m, i) => (m >= from && m <= to ? i : -1)).filter((i) => i >= 0);
+    // Pour chaque député : semaines de séance de la période postérieures à son élection.
     const rows = Object.entries(travail.deputes).map(([slug, arr]) => {
-      let conv = 0, pres = 0, min = 0, jours = 0;
-      for (const i of idx) { conv += arr[i][0]; pres += arr[i][1]; min += arr[i][2]; jours += arr[i][3]; }
-      return [slug, conv, min, conv ? pres / conv : -1, jours] as [string, number, number, number, number];
+      const deb = travail!.debut[slug] ?? '0000-00-00';
+      let conv = 0, pres = 0, minC = 0, jours = 0, minS = 0;
+      const weeks = new Set<string>();
+      for (const i of idx) {
+        const m = travail!.mois[i];
+        if (m < deb.slice(0, 7)) continue;
+        conv += arr[i][0]; pres += arr[i][1]; minC += arr[i][2]; jours += arr[i][3]; minS += arr[i][4] ?? 0;
+        for (const w of travail!.semaines[m] ?? []) weeks.add(w);
+      }
+      const hebdo = weeks.size >= 2 ? (minC + minS) / 60 / weeks.size : -1;
+      return [slug, conv, minC, conv ? pres / conv : -1, jours, hebdo, minS, weeks.size] as [string, number, number, number, number, number, number, number];
     });
     rows.sort((x, y) => (sortKey === 0 ? who[x[0]][0].localeCompare(who[y[0]][0], 'fr') * -sortDir : (x[sortKey] - y[sortKey]) * sortDir));
     const shown = showAll ? rows : rows.slice(0, 20);
+    const h1 = (n: number) => n.toLocaleString('fr-FR', { maximumFractionDigits: 1, minimumFractionDigits: 1 });
     document.querySelector('#ttable tbody')!.innerHTML = shown
-      .map(([slug, conv, min, rate, jours]) => `<tr><td><a href="/deputes/${slug}/">${esc(who[slug][0])}</a> <span class="muted small">${esc(who[slug][1])}</span></td><td class="r num">${hours(min)} h</td><td class="r num">${rate < 0 ? '–' : Math.round(rate * 100) + ' %'} <span class="muted small">(${conv})</span></td><td class="r num">${jours}</td></tr>`)
+      .map(([slug, conv, minC, rate, jours, hebdo, minS, nw]) => `<tr><td><a href="/deputes/${slug}/">${esc(who[slug][0])}</a> <span class="muted small">${esc(who[slug][1])}</span></td><td class="r num"><b>${hebdo < 0 ? '–' : h1(hebdo) + ' h'}</b><span class="muted small sub">${hebdo < 0 ? 'trop récent' : `séance ${hours(minS)} h · commission ${hours(minC)} h · ${nw} sem.`}</span></td><td class="r num">${hours(minC)} h</td><td class="r num">${rate < 0 ? '–' : Math.round(rate * 100) + ' %'} <span class="muted small">(${conv})</span></td><td class="r num">${jours}</td></tr>`)
       .join('');
     document.getElementById('more')!.textContent = showAll ? 'Réduire' : `Voir les ${rows.length} députés`;
     document.querySelectorAll<HTMLElement>('#ttable th').forEach((th) => th.setAttribute('aria-sort', Number(th.dataset.k) === sortKey ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'));
@@ -439,5 +451,6 @@ const who = Object.fromEntries(deputes.map((d) => [d.slug, [`${d.prenom} ${d.nom
   .tbl th[aria-sort='descending']::after { content: ' ↓'; }
   .tbl :global(td) { border-bottom: 1px solid var(--ink-8); padding: 7px 0; }
   .tbl .r, .tbl :global(.r) { text-align: right; padding-left: 12px; white-space: nowrap; }
+  .tbl :global(.sub) { display: block; font-size: 0.72rem; font-weight: 400; }
   .more { justify-self: start; border: 1px solid var(--ink-16); background: var(--bg); border-radius: 8px; padding: 7px 14px; }
 </style>
