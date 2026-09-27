@@ -1,0 +1,45 @@
+{
+ "regle": "Condamnations pénales définitives, confirmées explicitement par une source, et encore dans le délai de la réhabilitation légale (articles 133-13 et suivants du code pénal).",
+ "verifie_le": "2026-09-27",
+ "condamnations": [
+  {
+   "depute_id": "PA842105",
+   "date": "2022-02-18",
+   "definitive_depuis": "2025-03-10",
+   "juridiction": "Tribunal correctionnel de Lyon",
+   "faits": "Violences volontaires en réunion ayant entraîné une incapacité totale de travail d'un jour",
+   "peine": "4 mois d'emprisonnement avec sursis et 1 600 euros de dommages et intérêts",
+   "precision": "Appel interjeté puis abandonné : la cour d'appel de Lyon a constaté le désistement le 10 mars 2025.",
+   "source": {
+    "label": "Le Figaro, 4 décembre 2025",
+    "url": "https://www.lefigaro.fr/faits-divers/le-depute-lfi-raphael-arnault-a-ete-definitivement-condamne-par-la-justice-pour-violences-volontaires-en-reunion-20251204"
+   }
+  },
+  {
+   "depute_id": "PA720614",
+   "date": "2024-09-11",
+   "definitive_depuis": "2025-12-16",
+   "juridiction": "Cour d'appel de Paris",
+   "faits": "Diffamation publique envers l'association La Cimade",
+   "peine": "500 euros d'amende avec sursis",
+   "precision": "Pourvoi rejeté par la chambre criminelle de la Cour de cassation le 16 décembre 2025.",
+   "source": {
+    "label": "Anadolu, 17 décembre 2025",
+    "url": "https://www.aa.com.tr/fr/monde/france-justice-la-cour-de-cassation-rejette-le-pourvoi-de-marine-le-pen-dans-l-affaire-la-cimade/3773561"
+   }
+  },
+  {
+   "depute_id": "PA721062",
+   "date": "2025-02-13",
+   "definitive_depuis": "2025-02-23",
+   "juridiction": "Tribunal correctionnel de Saint-Denis (La Réunion)",
+   "faits": "Conduite en état d'ivresse manifeste, défaut de maîtrise du véhicule et refus de se soumettre aux dépistages",
+   "peine": "6 mois d'emprisonnement avec sursis simple, 9 mois de suspension du permis de conduire, amendes de 1 000 et 300 euros",
+   "precision": "Pas d'appel : la décision est devenue définitive à l'expiration du délai d'appel.",
+   "source": {
+    "label": "Zinfos974, 14 mars 2025",
+    "url": "https://www.zinfos974.com/jean-hugues-ratenon-ne-fera-pas-appel-de-sa-condamnation/"
+   }
+  }
+ ]
+}

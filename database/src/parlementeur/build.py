@@ -148,6 +148,10 @@ def main() -> None:
             ref_to_sigle[uid] = an.DISPLAY_SIGLE.get(o["libelleAbrev"], o["libelleAbrev"])
     names = {uid: o["libelle"] for uid, o in organes.items() if o.get("codeType") == "GP"}
 
+    condamnations: dict[str, list] = {}
+    for c in read_json(ROOT / "curated" / "condamnations.json")["condamnations"]:
+        condamnations.setdefault(c["depute_id"], []).append({k: v for k, v in c.items() if k != "depute_id"})
+
     # Scrutins marquants : votes solennels et motions de censure.
     marquants = [s for s in scrutins if s["solennel"] or s["motion"]]
 
@@ -216,7 +220,7 @@ def main() -> None:
             "amendements": {"deposes": public["amendements"], "adoptes": public["amendementsAdoptes"]},
             "questions": public["questions"],
             "questionsRepondues": questions.get(d["id"], {}).get("repondues", 0),
-            "condamnations": [],
+            "condamnations": condamnations.get(d["id"], []),
             "presidentielles": [
                 {
                     "annee": y,
@@ -256,6 +260,10 @@ def main() -> None:
     write_json(DIST / "scrutins.json", index)
     write_json(DIST / "lobbying.json", lobby)
     shutil.copyfile(ROOT / "curated" / "sieges.json", DIST / "sieges.json")
+    # Données constituées à la main, chacune avec ses sources : historique et condamnations.
+    for name in ("legislatures.json",):
+        if (ROOT / "curated" / name).exists():
+            shutil.copyfile(ROOT / "curated" / name, DIST / name)
 
     n_votes = sum(len(s["votes"]) for s in scrutins)
     checks = [
