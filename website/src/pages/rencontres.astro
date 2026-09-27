@@ -1,0 +1,119 @@
+---
+import Base from '../layouts/Base.astro';
+import { load, readOptional, fmtDate, fmtInt } from '../lib/data';
+import { treemap } from '../lib/charts';
+
+type Rap = { rapport: string; titre: string; date: string; url: string; organisation: string | null; detail: string | null; etoile: boolean; registre: string[]; type: string; rapporteurs: string[] };
+type Com = { date: string; organe: string; texte: string; registre: string[]; presents: string[] };
+type Amd = { id: string; texte: string; n: number; adoptes: number; exemple: string; deputes: string[]; groupes: string[] };
+type R = { couverture: { rapports: number; lisibles: number; avecAnnexe: number }; rapports: Rap[]; commissions: Com[]; amendements: Amd[] };
+
+const r = readOptional<R>('rencontres.json')!;
+const { deputes } = load();
+const who = new Map(deputes.map((d) => [d.slug, `${d.prenom} ${d.nom}`]));
+const auditions = r.rapports.filter((x) => x.type !== 'contribution');
+const lobbyRap = auditions.filter((x) => x.etoile || x.registre.length);
+const lobbyCom = r.commissions.filter((x) => x.registre.length);
+
+// Organisations du répertoire les plus entendues, toutes sources confondues.
+const counts = new Map<string, { n: number; deps: Set<string> }>();
+for (const x of auditions) for (const o of x.registre) { const c = counts.get(o) ?? { n: 0, deps: new Set() }; c.n++; x.rapporteurs.forEach((s) => c.deps.add(s)); counts.set(o, c); }
+for (const x of r.commissions) for (const o of x.registre) { const c = counts.get(o) ?? { n: 0, deps: new Set() }; c.n++; counts.set(o, c); }
+const topOrgs = [...counts.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 28);
+const nice = (s: string) => (s === s.toUpperCase() ? s.toLowerCase().replace(/(^|[\s'’(-])\p{L}/gu, (m) => m.toUpperCase()) : s);
+const amdTop = r.amendements.slice(0, 25);
+
+---
+<Base title="Qui a rencontré qui" description="Les auditions nominatives des rapporteurs, les auditions en commission et les amendements identiques déposés par plusieurs groupes : ce que les sources publiques disent des contacts entre députés et organisations." og="/og/lobbying.png" section="lobbying">
+  <div class="stack" style="--gap:44px">
+    <header class="stack" style="--gap:12px">
+      <p class="kicker">Lobbying · rencontres documentées</p>
+      <h1>Qui a rencontré qui</h1>
+      <p class="lede">Le répertoire de la HATVP ne nomme jamais les élus rencontrés. D'autres documents publics le font : les rapports parlementaires, les ordres du jour des commissions et les amendements. Voici ce qu'ils montrent, source par source.</p>
+    </header>
+
+    <section class="kpis">
+      <div><b class="num">{fmtInt(auditions.length)}</b><span>personnes entendues par des rapporteurs, dans {r.couverture.avecAnnexe} rapports</span></div>
+      <div><b class="num">{fmtInt(lobbyRap.length)}</b><span>d'entre elles représentent une organisation inscrite comme lobby</span></div>
+      <div><b class="num">{fmtInt(r.commissions.length)}</b><span>auditions en commission, dont {fmtInt(lobbyCom.length)} avec une organisation inscrite</span></div>
+      <div><b class="num">{fmtInt(r.amendements.length)}</b><span>amendements au texte identique déposés par plusieurs groupes</span></div>
+    </section>
+
+    <section class="stack" style="--gap:12px">
+      <h2>Chercher une organisation ou un député</h2>
+      <input id="rq" type="search" placeholder="Ex. FNSEA, TotalEnergies, Google, ou un nom de député" autocomplete="off" />
+      <ul class="res" id="rres"></ul>
+    </section>
+
+    <section class="stack" style="--gap:12px">
+      <h2>Les organisations inscrites les plus entendues</h2>
+      <figure class="tmfig" set:html={treemap(topOrgs.map(([o, c]) => ({ label: nice(o), v: c.n })), 360, 300)}></figure>
+      <p class="src">Nombre d'auditions (rapporteurs et commissions) où l'organisation apparaît, rapprochée automatiquement du <a href="https://www.hatvp.fr/le-repertoire/">répertoire des représentants d'intérêts</a>.</p>
+    </section>
+
+    <section class="stack" style="--gap:12px">
+      <h2>Le même amendement, déposé par plusieurs groupes</h2>
+      <p class="muted">Quand des députés de groupes opposés déposent mot pour mot le même texte, c'est souvent qu'il leur a été fourni de l'extérieur (fédération, association, entreprise). Ce n'est pas la preuve d'une rencontre, mais un signal à vérifier. Les plus répandus :</p>
+      <ol class="amd">
+        {amdTop.map((a) => (
+          <li>
+            <p class="small muted">{a.deputes.length} députés · {a.groupes.length} groupes : {a.groupes.join(', ')}{a.adoptes ? ` · ${a.adoptes} adopté${a.adoptes > 1 ? 's' : ''}` : ''}</p>
+            <details><summary>{a.texte.slice(0, 180)}{a.texte.length > 180 ? '…' : ''}</summary>
+              <p class="small">{a.texte}</p>
+              <p class="small muted">{a.deputes.map((s) => who.get(s)).filter(Boolean).join(', ')}</p>
+            </details>
+            <a class="small" href={`https://www.assemblee-nationale.fr/dyn/17/amendements/${a.exemple}`}>Voir un exemplaire sur le site de l'Assemblée →</a>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <section class="stack" style="--gap:10px" id="methode">
+      <h2>D'où viennent ces données</h2>
+      <p><b>Auditions des rapporteurs.</b> L'article 22 de l'<a href="https://www.assemblee-nationale.fr/connaissance/instruction.asp">Instruction générale du Bureau de l'Assemblée</a> impose que chaque rapport liste en annexe « l'ensemble des auditions menées par le rapporteur », en distinguant les représentants d'intérêts inscrits au registre (souvent marqués d'un astérisque, noté ★ ici). Parlementeur lit ces annexes : elles ont pu être extraites pour {r.couverture.avecAnnexe} des {r.couverture.lisibles} rapports disponibles de la législature ; les autres n'ont pas d'audition ou ne sont publiés qu'en PDF.</p>
+      <p><b>Auditions en commission.</b> L'agenda officiel indique l'objet de chaque réunion de commission et la liste nominative des députés présents.</p>
+      <p><b>Rapprochement avec le répertoire.</b> Le nom des organisations est comparé automatiquement à celui des {fmtInt(2451)} organisations inscrites au répertoire de la HATVP. Ce rapprochement peut se tromper (homonymes) : chaque ligne renvoie à sa source pour vérification.</p>
+      <p><b>Amendements identiques.</b> Textes strictement identiques, déposés en premier signataire par au moins trois députés d'au moins deux groupes différents.</p>
+    </section>
+  </div>
+</Base>
+
+<script>
+  let idx: [string, string, string, string][] = [];
+  let hay: string[] = [];
+  let loading: Promise<void> | null = null;
+  const norm = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  // L'index (plusieurs milliers d'auditions) n'est chargé qu'au premier usage de la recherche.
+  const ensure = () =>
+    (loading ??= fetch('/rencontres-index.json').then((r) => r.json()).then((j) => { idx = j; hay = idx.map((r) => norm(r[1])); }));
+  const q = document.getElementById('rq') as HTMLInputElement;
+  const out = document.getElementById('rres')!;
+  q.addEventListener('focus', ensure);
+  q.addEventListener('input', async () => {
+    await ensure();
+    const words = norm(q.value.trim()).split(/\s+/).filter(Boolean);
+    if (q.value.trim().length < 3) { out.innerHTML = ''; return; }
+    const hits = idx.filter((_, i) => words.every((w) => hay[i].includes(w)));
+    out.innerHTML = `<li class="muted small">${hits.length} résultat${hits.length > 1 ? 's' : ''}</li>` +
+      hits.slice(0, 80).map((r) => `<li><span class="tag">${r[0]}</span> <a href="${r[3]}">${esc(r[2])}</a></li>`).join('');
+  });
+</script>
+
+<style>
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 16px; }
+  .kpis div { border-top: 2px solid var(--ink); padding-top: 8px; display: grid; }
+  .kpis b { font-family: var(--serif); font-size: 2rem; font-weight: 600; line-height: 1.1; }
+  .kpis span { font-size: 0.85rem; color: var(--ink-62); }
+  input[type='search'] { font: inherit; padding: 11px 13px; border: 1px solid var(--ink-16); border-radius: 8px; background: var(--bg); color: var(--ink); max-width: 560px; width: 100%; }
+  .res { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 0.92rem; }
+  .res :global(.tag) { display: inline-block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; color: var(--ink-62); border: 1px solid var(--ink-16); border-radius: 999px; padding: 1px 7px; }
+  .tmfig { margin: 0; }
+  .tmfig :global(svg) { width: 100%; height: auto; display: block; max-width: 760px; }
+  .tmfig :global(.tm) { font-size: 10px; font-weight: 700; fill: var(--bg); font-family: var(--sans); }
+  .tmfig :global(.tmv) { font-size: 9.5px; fill: var(--bg); font-family: var(--sans); opacity: 0.85; }
+  .tmfig :global(.dk) { fill: var(--ink); }
+  .amd { margin: 0; padding-left: 1.3em; display: grid; gap: 16px; }
+  .amd li { display: grid; gap: 4px; }
+  .amd summary { cursor: pointer; }
+</style>
