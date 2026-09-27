@@ -126,7 +126,7 @@ def main() -> None:
         scrutins = an.load_scrutins()
     with step("Agenda : séances et réunions de commission (Assemblée nationale)"):
         reels = comptes_rendus.load()
-        events, presence, monthly = agenda.load(an.load_organe_names(), scrutins, ids, reels)
+        events, presence, monthly, seance_index = agenda.load(an.load_organe_names(), scrutins, ids, reels)
     with step("Présence et discipline de vote (DuckDB)"):
         metrics = vote_metrics(deputes, scrutins)
     with step("Amendements (Assemblée nationale)"):
@@ -287,21 +287,48 @@ def main() -> None:
     write_json(DIST / "scrutins.json", index)
     write_json(DIST / "lobbying.json", lobby)
     write_json(DIST / "agenda.json", events)
-    # Travail par député et par mois : commissions (convocations, présences, minutes) et jours de vote en séance.
+    # Travail par député et par mois : commissions (convocations, présences, minutes), jours de vote,
+    # et minutes de séance publique où le député a voté ou siégé (durée réelle, suspensions déduites).
+    from datetime import date as _date
+
     vote_days: dict[str, dict[str, set]] = {}
     for sc in scrutins:
         mo = sc["date"][:7]
         for a, c in sc["votes"].items():
             if c != "n":
                 vote_days.setdefault(a, {}).setdefault(mo, set()).add(sc["date"])
-    months = sorted({m for v in monthly.values() for m in v} | {m for v in vote_days.values() for m in v})
+    voters_by_seance: dict[str, set] = {}
+    for sc in scrutins:
+        if sc.get("seanceRef"):
+            voters_by_seance.setdefault(sc["seanceRef"], set()).update(sc["votes"].keys())
+    seance_min: dict[str, dict[str, list[int]]] = {}
+    weeks_by_month: dict[str, set] = {}
+    for uid, ev in seance_index.items():
+        d0 = _date.fromisoformat(ev["d"][:10])
+        mo = ev["d"][:7]
+        if d0 <= _date.today():
+            weeks_by_month.setdefault(mo, set()).add(d0.isocalendar()[:2])
+        dur = (ev["rm"] - ev.get("rs", 0)) if ev.get("rm") is not None else (ev.get("m") or 0)
+        for a in voters_by_seance.get(uid, ()):
+            row = seance_min.setdefault(a, {}).setdefault(mo, [0, 0])
+            row[0] += dur
+            row[1] += 1
+    months = sorted({m for v in monthly.values() for m in v} | {m for v in vote_days.values() for m in v} | set(weeks_by_month))
     write_json(
         DIST / "travail.json",
         {
             "mois": months,
+            # Semaines (lundi-dimanche) comptant au moins une séance publique, rattachées au mois de la séance.
+            "semaines": {m: sorted(f"{y}-{w:02d}" for y, w in weeks_by_month.get(m, ())) for m in months},
+            "debut": {d["slug"]: d["debut"][:10] for d in deputes},
             "deputes": {
                 d["slug"]: [
-                    [*monthly[d["id"]].get(m, [0, 0, 0]), len(vote_days.get(d["id"], {}).get(m, ()))] for m in months
+                    [
+                        *monthly[d["id"]].get(m, [0, 0, 0]),
+                        len(vote_days.get(d["id"], {}).get(m, ())),
+                        *seance_min.get(d["id"], {}).get(m, [0, 0]),
+                    ]
+                    for m in months
                 ]
                 for d in deputes
             },

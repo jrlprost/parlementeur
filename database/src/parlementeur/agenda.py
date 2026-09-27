@@ -92,6 +92,7 @@ def load(organe_names: dict[str, str], scrutins: list[dict], deputy_ids: set[str
             {
                 # Heures réelles tirées du compte rendu : ouverture, durée totale, minutes de suspension.
                 **({"ro": reel["ouverture"], "rm": reel["minutes"], "rs": reel["suspensions_minutes"]} if reel else {}),
+                **({"_uid": r["uid"]} if kind == "seance" else {}),
                 "t": kind,
                 "d": debut.isoformat(timespec="minutes"),
                 "m": minutes,
@@ -104,5 +105,7 @@ def load(organe_names: dict[str, str], scrutins: list[dict], deputy_ids: set[str
             }
         )
     events.sort(key=lambda e: e["d"])
+    # Index des séances publiques par identifiant, pour calculer la présence en séance de chaque député.
+    seance_index = {e.pop("_uid"): e for e in events if "_uid" in e}
     log(f"agenda : {len(events)} réunions ({sum(1 for e in events if e['t'] == 'seance')} séances publiques)")
-    return events, presence, monthly
+    return events, presence, monthly, seance_index
