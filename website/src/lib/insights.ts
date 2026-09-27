@@ -61,7 +61,6 @@ export function insights(view: string, ds: Depute[], gs: Groupe[]): Block[] {
           question: 'Quel groupe pèse combien ?',
           answer: `Aucun groupe n'approche seul de la majorité absolue de ${Math.floor(N / 2) + 1} sièges.`,
           rows: order.map((g) => ({ label: g.sigle, value: g.effectif, display: `${g.effectif} sièges`, share: g.effectif / N, color: g.couleur, names: ds.filter((d) => d.groupe === g.sigle).map((d) => name(d)) })),
-          marker: { value: Math.floor(N / 2) + 1, label: 'majorité absolue' },
         },
         {
           kind: 'bars',

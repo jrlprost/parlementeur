@@ -12,7 +12,8 @@ const C = 2 * Math.PI * R;
 const view = blocks.map((b) => {
   if (b.kind === 'bars') {
     const max = b.max ?? Math.max(...b.rows.map((r) => r.value), 1);
-    return { b, max, mk: b.marker ? `--mk:${(b.marker.value / max) * 100}%` : undefined };
+    const inScale = b.marker && b.marker.value <= max;
+    return { b: inScale ? b : { ...b, marker: undefined }, max, mk: inScale ? `--mk:${(b.marker!.value / max) * 100}%` : undefined };
   }
   if (b.kind === 'split') {
     const tot = b.parts.reduce((a, p) => a + p.value, 0);
@@ -109,9 +110,9 @@ const view = blocks.map((b) => {
   .row[open] summary .lbl::after { content: ' ▾'; }
   .lbl { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
   .lbl i, .parts i, .plegend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; margin-right: 6px; }
-  .track { position: relative; height: 14px; background: var(--ink-8); border-radius: 2px; overflow: visible; }
+  .track { position: relative; height: 14px; background: var(--ink-8); border-radius: 2px; overflow: hidden; }
   .fill { display: block; height: 100%; background: var(--ramp-to); border-radius: 2px; }
-  .mk { position: absolute; top: -3px; bottom: -3px; left: var(--mk); width: 2px; background: var(--ink); }
+  .mk { position: absolute; top: 0; bottom: 0; left: var(--mk); width: 2px; background: var(--ink); }
   .val { font-size: 0.85rem; text-align: right; white-space: nowrap; }
   .names { list-style: none; margin: 6px 0 10px; padding: 8px 12px; background: var(--ink-4); border-radius: 6px; columns: 2 200px; column-gap: 20px; font-size: 0.85rem; }
   .names li { break-inside: avoid; padding: 2px 0; }
