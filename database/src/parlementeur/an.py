@@ -194,6 +194,7 @@ def load_scrutins():
         dec = s["syntheseVote"]["decompte"]
         votes: dict[str, str] = {}
         voter_group: dict[str, str] = {}
+        delegues: set[str] = set()
         groupes = []
         for g in as_list(((s.get("ventilationVotes") or {}).get("organe") or {}).get("groupes", {}).get("groupe")):
             v = g.get("vote") or {}
@@ -207,6 +208,9 @@ def load_scrutins():
                     if voter and voter.get("acteurRef"):
                         votes[voter["acteurRef"]] = code
                         voter_group[voter["acteurRef"]] = g["organeRef"]
+                        # Vote émis par un collègue au nom du député absent.
+                        if voter.get("parDelegation") == "true":
+                            delegues.add(voter["acteurRef"])
             groupes.append(
                 {
                     "ref": g["organeRef"],
@@ -241,6 +245,7 @@ def load_scrutins():
                 "url": f"https://www.assemblee-nationale.fr/dyn/{LEGISLATURE}/scrutins/{s['numero']}",
                 "votes": votes,
                 "voterGroup": voter_group,
+                "delegues": delegues,
                 "groupes": groupes,
             }
         )

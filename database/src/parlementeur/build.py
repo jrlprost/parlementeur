@@ -35,8 +35,8 @@ def vote_metrics(deputes: list[dict], scrutins: list[dict]) -> dict[str, dict]:
     table("pos", "{'numero':'INTEGER','groupe':'VARCHAR','position':'VARCHAR'}", ((s["numero"], g["ref"], g["position"]) for s in scrutins for g in s["groupes"]))
     table(
         "vote",
-        "{'numero':'INTEGER','acteur':'VARCHAR','code':'VARCHAR','groupe':'VARCHAR'}",
-        ((s["numero"], a, c, s["voterGroup"].get(a)) for s in scrutins for a, c in s["votes"].items()),
+        "{'numero':'INTEGER','acteur':'VARCHAR','code':'VARCHAR','groupe':'VARCHAR','delegue':'BOOLEAN'}",
+        ((s["numero"], a, c, s["voterGroup"].get(a), a in s["delegues"]) for s in scrutins for a, c in s["votes"].items()),
     )
     rows = con.execute(
         """
@@ -44,16 +44,17 @@ def vote_metrics(deputes: list[dict], scrutins: list[dict]) -> dict[str, dict]:
           SELECT d.id, s.numero, s.solennel FROM dep d JOIN scr s ON s.date >= d.debut
         ),
         joined AS (
-          SELECT e.id, e.numero, e.solennel, v.code, p.position
+          SELECT e.id, e.numero, e.solennel, v.code, v.delegue, p.position
           FROM eligible e
           LEFT JOIN vote v ON v.numero = e.numero AND v.acteur = e.id
           LEFT JOIN pos p ON p.numero = e.numero AND p.groupe = v.groupe
         )
         SELECT id,
           count(*) FILTER (WHERE code IS DISTINCT FROM 'n') AS eligibles,
-          count(*) FILTER (WHERE code IN ('p','c','a')) AS votes,
+          count(*) FILTER (WHERE code IN ('p','c','a') AND NOT delegue) AS votes,
           count(*) FILTER (WHERE solennel AND code IS DISTINCT FROM 'n') AS eligibles_sol,
-          count(*) FILTER (WHERE solennel AND code IN ('p','c','a')) AS votes_sol,
+          count(*) FILTER (WHERE solennel AND code IN ('p','c','a') AND NOT delegue) AS votes_sol,
+          count(*) FILTER (WHERE code IN ('p','c','a') AND delegue) AS delegues,
           count(*) FILTER (WHERE code IN ('p','c','a') AND position IN ('pour','contre','abstention')) AS avec_ligne,
           count(*) FILTER (WHERE code IN ('p','c','a') AND position IN ('pour','contre','abstention')
             AND ((code='p' AND position='pour') OR (code='c' AND position='contre') OR (code='a' AND position='abstention'))) AS alignes
@@ -61,11 +62,12 @@ def vote_metrics(deputes: list[dict], scrutins: list[dict]) -> dict[str, dict]:
         """
     ).fetchall()
     out = {}
-    for id_, elig, votes, elig_sol, votes_sol, avec, alignes in rows:
+    for id_, elig, votes, elig_sol, votes_sol, delegues, avec, alignes in rows:
         out[id_] = {
             "participation": round(votes / elig, 4) if elig else None,
             "participationSolennels": round(votes_sol / elig_sol, 4) if elig_sol else None,
             "votes": votes,
+            "delegues": delegues,
             "eligibles": elig,
             "loyaute": round(alignes / avec, 4) if avec >= 20 else None,
             "dissidences": avec - alignes,
@@ -215,9 +217,11 @@ def main() -> None:
             "loyaute": m.get("loyaute"),
             "votes": m.get("votes"),
             "scrutinsPossibles": m.get("eligibles"),
+            # Part des votes du député confiés à un collègue (délégation) : il n'était pas dans l'hémicycle.
+            "partDelegation": round(m["delegues"] / (m["votes"] + m["delegues"]), 4) if m.get("votes", 0) + m.get("delegues", 0) else None,
             "commissions": presence.get(d["id"]),
             "interventions": interventions_by_id.get(d["id"], 0),
-            "joursVote": len({sc["date"] for sc in scrutins if d["id"] in sc["votes"] and sc["votes"][d["id"]] != "n"}),
+            "joursVote": len({sc["date"] for sc in scrutins if d["id"] in sc["votes"] and sc["votes"][d["id"]] != "n" and d["id"] not in sc["delegues"]}),
             "amendements": amdts.get(d["id"], {}).get("deposes", 0),
             "amendementsAdoptes": amdts.get(d["id"], {}).get("adoptes", 0),
             "questions": questions.get(d["id"], {}).get("posees", 0),
@@ -301,7 +305,7 @@ def main() -> None:
     for sc in scrutins:
         mo = sc["date"][:7]
         for a, c in sc["votes"].items():
-            if c != "n":
+            if c != "n" and a not in sc["delegues"]:
                 vote_days.setdefault(a, {}).setdefault(mo, set()).add(sc["date"])
     # Présence estimée en séance : part des scrutins de la séance auxquels le député a pris part,
     # ou fenêtre entre sa première et sa dernière prise de parole, la plus grande des deux.
@@ -323,7 +327,8 @@ def main() -> None:
             counts: dict[str, int] = {}
             for sc in scs:
                 for a in sc["votes"]:
-                    counts[a] = counts.get(a, 0) + 1
+                    if a not in sc["delegues"]:
+                        counts[a] = counts.get(a, 0) + 1
             for a, n in counts.items():
                 share[a] = n / len(scs)
         cr = reels.get(uid)
