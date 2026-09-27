@@ -296,3 +296,16 @@ def load_questions() -> tuple[dict[str, dict], int]:
                 row["repondues"] += 1
     log(f"questions écrites : {total:,}")
     return out, total
+
+
+def load_all_groups() -> dict[str, dict]:
+    """Tous les groupes politiques de la législature, y compris ceux dissous ou renommés depuis."""
+    z = zipfile.ZipFile(fetch(AMO50, f"an{LEGISLATURE}_amo50.json.zip"))
+    out = {}
+    for n in z.namelist():
+        if n.startswith("organe/"):
+            o = json.loads(z.read(n))["organe"]
+            debut = ((o.get("viMoDe") or {}).get("dateDebut") or "")[:10]
+            if o.get("codeType") == "GP" and (str(o.get("legislature")) == str(LEGISLATURE) or debut >= "2024-07-01"):
+                out[o["uid"]] = {"sigle": DISPLAY_SIGLE.get(o["libelleAbrev"], o["libelleAbrev"]), "nom": o["libelle"]}
+    return out

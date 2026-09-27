@@ -66,6 +66,7 @@ def vote_metrics(deputes: list[dict], scrutins: list[dict]) -> dict[str, dict]:
             "participation": round(votes / elig, 4) if elig else None,
             "participationSolennels": round(votes_sol / elig_sol, 4) if elig_sol else None,
             "votes": votes,
+            "eligibles": elig,
             "loyaute": round(alignes / avec, 4) if avec >= 20 else None,
             "dissidences": avec - alignes,
         }
@@ -148,6 +149,25 @@ def main() -> None:
             ref_to_sigle[uid] = an.DISPLAY_SIGLE.get(o["libelleAbrev"], o["libelleAbrev"])
     names = {uid: o["libelle"] for uid, o in organes.items() if o.get("codeType") == "GP"}
 
+    # Groupes successifs de chaque député, reconstitués à partir du groupe enregistré à chaque vote.
+    all_groups = an.load_all_groups()
+    for uid, o in organes.items():
+        if o.get("codeType") == "GP" and str(o.get("legislature")) == str(an.LEGISLATURE):
+            all_groups.setdefault(uid, {"sigle": an.DISPLAY_SIGLE.get(o["libelleAbrev"], o["libelleAbrev"]), "nom": o["libelle"]})
+    for uid, g in all_groups.items():
+        ref_to_sigle.setdefault(uid, g["sigle"])
+        names.setdefault(uid, g["nom"])
+    vote_groups: dict[str, list[dict]] = {}
+    for sc in scrutins:
+        for a, g in sc["voterGroup"].items():
+            if g not in all_groups:
+                continue
+            seq = vote_groups.setdefault(a, [])
+            if not seq or seq[-1]["ref"] != g:
+                seq.append({"ref": g, "debut": sc["date"], "fin": sc["date"]})
+            else:
+                seq[-1]["fin"] = sc["date"]
+
     condamnations: dict[str, list] = {}
     for c in read_json(ROOT / "curated" / "condamnations.json")["condamnations"]:
         condamnations.setdefault(c["depute_id"], []).append({k: v for k, v in c.items() if k != "depute_id"})
@@ -180,11 +200,13 @@ def main() -> None:
             "legislatures": max(leg_an, leg_wd, 1),
             "premiereElection": min([y for y in first_years + ([wd_first] if wd_first else [])], default=None),
             "fonction": d["fonction"],
+            "groupesSuccessifs": max(1, len({h["ref"] for h in vote_groups.get(d["id"], [])})),
             # La présidence de l'Assemblée ne prend pas part aux votes : aucun taux n'a de sens.
             "participation": None if d["preside"] else m.get("participation"),
             "participationSolennels": None if d["preside"] else m.get("participationSolennels"),
             "loyaute": m.get("loyaute"),
             "votes": m.get("votes"),
+            "scrutinsPossibles": m.get("eligibles"),
             "amendements": amdts.get(d["id"], {}).get("deposes", 0),
             "amendementsAdoptes": amdts.get(d["id"], {}).get("adoptes", 0),
             "questions": questions.get(d["id"], {}).get("posees", 0),
@@ -212,7 +234,7 @@ def main() -> None:
             "mandats": history.get(d["id"], []),
             "groupesHistorique": [
                 {"sigle": ref_to_sigle.get(h["ref"], "?"), "nom": names.get(h["ref"], ""), "debut": h["debut"], "fin": h["fin"]}
-                for h in gp_hist.get(d["id"], [])
+                for h in vote_groups.get(d["id"], [])
             ],
             "interets": {k: dec[k] for k in ("date", "url", "activites", "participations", "mandatsElectifs", "conjoint")} if dec else None,
             "votesCles": votes_cles[:40],
