@@ -1,0 +1,1199 @@
+[
+ {
+  "numero": 1,
+  "debut": "1958-12-09",
+  "fin": "1962-10-09",
+  "election": "1958-11-23",
+  "sieges": 579,
+  "femmes": 8,
+  "groupes": [
+   {
+    "nom": "Socialiste (SFIO)",
+    "sigle": "SOC",
+    "sieges": 47,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "Républicains populaires et du Centre démocratique",
+    "sigle": "RPCD",
+    "sieges": 64,
+    "famille": "centre"
+   },
+   {
+    "nom": "Union pour la nouvelle République",
+    "sigle": "UNR",
+    "sieges": 206,
+    "famille": "droite"
+   },
+   {
+    "nom": "Indépendants et paysans d'action sociale",
+    "sigle": "IPAS",
+    "sieges": 117,
+    "famille": "droite"
+   },
+   {
+    "nom": "Formation administrative des élus d'Algérie et du Sahara",
+    "sigle": "FAEAS",
+    "sieges": 66,
+    "famille": "droite"
+   },
+   {
+    "nom": "Formation administrative des non-inscrits",
+    "sigle": "FANI",
+    "sieges": 40,
+    "famille": "non-inscrits"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 39,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "Jacques Chaban-Delmas",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - Ire législature",
+    "url": "https://fr.wikipedia.org/wiki/Ire_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ],
+  "note": "Le PCF n'ayant pas obtenu le statut de groupe lors de cette législature, ses 10 députés siègent au sein de la Formation administrative des non-inscrits (FANI, 40 sièges). L'entrée finale « Non-inscrits » (39) correspond aux isolés et sièges vacants recensés à l'ouverture (9 décembre 1958)."
+ },
+ {
+  "numero": 2,
+  "debut": "1962-12-06",
+  "fin": "1967-04-02",
+  "election": "1962-11-18",
+  "sieges": 482,
+  "femmes": 8,
+  "groupes": [
+   {
+    "nom": "Communiste",
+    "sigle": "COM",
+    "sieges": 41,
+    "famille": "communiste"
+   },
+   {
+    "nom": "Rassemblement démocratique",
+    "sigle": "RD",
+    "sieges": 39,
+    "famille": "centre-gauche"
+   },
+   {
+    "nom": "Socialiste (SFIO)",
+    "sigle": "SOC",
+    "sieges": 66,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "Centre démocratique",
+    "sigle": "CD",
+    "sieges": 55,
+    "famille": "centre"
+   },
+   {
+    "nom": "Républicains indépendants",
+    "sigle": "RI",
+    "sieges": 35,
+    "famille": "droite"
+   },
+   {
+    "nom": "Union pour la nouvelle République - Union démocratique du travail",
+    "sigle": "UNR-UDT",
+    "sieges": 233,
+    "famille": "droite"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 13,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "Jacques Chaban-Delmas",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - IIe législature",
+    "url": "https://fr.wikipedia.org/wiki/IIe_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ]
+ },
+ {
+  "numero": 3,
+  "debut": "1967-04-03",
+  "fin": "1968-05-30",
+  "election": "1967-03-05",
+  "sieges": 487,
+  "femmes": 11,
+  "groupes": [
+   {
+    "nom": "Communiste",
+    "sigle": "COM",
+    "sieges": 73,
+    "famille": "communiste"
+   },
+   {
+    "nom": "Fédération de la gauche démocrate et socialiste",
+    "sigle": "FGDS",
+    "sieges": 121,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "Progrès et démocratie moderne",
+    "sigle": "PDM",
+    "sieges": 41,
+    "famille": "centre"
+   },
+   {
+    "nom": "Républicains indépendants",
+    "sigle": "RI",
+    "sieges": 42,
+    "famille": "droite"
+   },
+   {
+    "nom": "Union des démocrates pour la République",
+    "sigle": "UDR",
+    "sieges": 200,
+    "famille": "droite"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 10,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "Jacques Chaban-Delmas",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - IIIe législature",
+    "url": "https://fr.wikipedia.org/wiki/IIIe_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ],
+  "note": "L'entrée « Non-inscrits » (10) regroupe les 9 non-inscrits recensés par la source et 1 siège vacant/non attribué (circonscription de la Côte française des Somalis)."
+ },
+ {
+  "numero": 4,
+  "debut": "1968-07-11",
+  "fin": "1973-04-01",
+  "election": "1968-06-23",
+  "sieges": 487,
+  "femmes": 8,
+  "groupes": [
+   {
+    "nom": "Communiste",
+    "sigle": "COM",
+    "sieges": 34,
+    "famille": "communiste"
+   },
+   {
+    "nom": "Fédération de la gauche démocrate et socialiste (groupe socialiste à partir d'octobre 1969)",
+    "sigle": "SOC",
+    "sieges": 57,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "Progrès et démocratie moderne",
+    "sigle": "PDM",
+    "sieges": 33,
+    "famille": "centre"
+   },
+   {
+    "nom": "Républicains indépendants",
+    "sigle": "RI",
+    "sieges": 61,
+    "famille": "droite"
+   },
+   {
+    "nom": "Union des démocrates pour la République",
+    "sigle": "UDR",
+    "sieges": 293,
+    "famille": "droite"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 9,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "Jacques Chaban-Delmas",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - IVe législature",
+    "url": "https://fr.wikipedia.org/wiki/IVe_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ]
+ },
+ {
+  "numero": 5,
+  "debut": "1973-04-02",
+  "fin": "1978-04-02",
+  "election": "1973-03-04",
+  "sieges": 490,
+  "femmes": 8,
+  "groupes": [
+   {
+    "nom": "Communiste",
+    "sigle": "COM",
+    "sieges": 73,
+    "famille": "communiste"
+   },
+   {
+    "nom": "Parti socialiste et Radicaux de gauche",
+    "sigle": "PSRG",
+    "sieges": 102,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "Union centriste",
+    "sigle": "UC",
+    "sieges": 30,
+    "famille": "centre"
+   },
+   {
+    "nom": "Réformateurs démocrates sociaux",
+    "sigle": "RDS",
+    "sieges": 34,
+    "famille": "centre"
+   },
+   {
+    "nom": "Républicains indépendants",
+    "sigle": "RI",
+    "sieges": 55,
+    "famille": "droite"
+   },
+   {
+    "nom": "Union des démocrates pour la République (Rassemblement pour la République à partir de 1976)",
+    "sigle": "UDR",
+    "sieges": 183,
+    "famille": "droite"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 13,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "Edgar Faure",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - Ve législature",
+    "url": "https://fr.wikipedia.org/wiki/Ve_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ]
+ },
+ {
+  "numero": 6,
+  "debut": "1978-04-03",
+  "fin": "1981-05-22",
+  "election": "1978-03-12",
+  "sieges": 491,
+  "femmes": 20,
+  "groupes": [
+   {
+    "nom": "Communiste",
+    "sigle": "COM",
+    "sieges": 86,
+    "famille": "communiste"
+   },
+   {
+    "nom": "Socialiste",
+    "sigle": "SOC",
+    "sieges": 113,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "Union pour la démocratie française",
+    "sigle": "UDF",
+    "sieges": 123,
+    "famille": "centre"
+   },
+   {
+    "nom": "Rassemblement pour la République",
+    "sigle": "RPR",
+    "sieges": 154,
+    "famille": "droite"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 15,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "Jacques Chaban-Delmas",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - VIe législature",
+    "url": "https://fr.wikipedia.org/wiki/VIe_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ]
+ },
+ {
+  "numero": 7,
+  "debut": "1981-07-02",
+  "fin": "1986-04-01",
+  "election": "1981-06-14",
+  "sieges": 491,
+  "femmes": 26,
+  "groupes": [
+   {
+    "nom": "Communiste",
+    "sigle": "PCF",
+    "sieges": 44,
+    "famille": "communiste"
+   },
+   {
+    "nom": "Socialiste",
+    "sigle": "PS",
+    "sieges": 285,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "Rassemblement pour la République",
+    "sigle": "RPR",
+    "sieges": 88,
+    "famille": "droite"
+   },
+   {
+    "nom": "Union pour la démocratie française",
+    "sigle": "UDF",
+    "sieges": 62,
+    "famille": "centre"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 12,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "Louis Mermaz",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - VIIe législature",
+    "url": "https://fr.wikipedia.org/wiki/VIIe_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ]
+ },
+ {
+  "numero": 8,
+  "debut": "1986-04-02",
+  "fin": "1988-05-14",
+  "election": "1986-03-16",
+  "sieges": 577,
+  "femmes": 34,
+  "groupes": [
+   {
+    "nom": "Communiste",
+    "sigle": "PCF",
+    "sieges": 35,
+    "famille": "communiste"
+   },
+   {
+    "nom": "Socialiste",
+    "sigle": "PS",
+    "sieges": 212,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "Rassemblement pour la République",
+    "sigle": "RPR",
+    "sieges": 155,
+    "famille": "droite"
+   },
+   {
+    "nom": "Union pour la démocratie française",
+    "sigle": "UDF",
+    "sieges": 131,
+    "famille": "centre"
+   },
+   {
+    "nom": "Front national – Rassemblement national",
+    "sigle": "FN-RN",
+    "sieges": 35,
+    "famille": "extreme-droite"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 9,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "Jacques Chaban-Delmas",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - VIIIe législature",
+    "url": "https://fr.wikipedia.org/wiki/VIIIe_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ]
+ },
+ {
+  "numero": 9,
+  "debut": "1988-06-23",
+  "fin": "1993-04-01",
+  "election": "1988-06-05",
+  "sieges": 577,
+  "femmes": 33,
+  "groupes": [
+   {
+    "nom": "Communiste",
+    "sigle": "PCF",
+    "sieges": 25,
+    "famille": "communiste"
+   },
+   {
+    "nom": "Socialiste",
+    "sigle": "PS",
+    "sieges": 275,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "Union du centre",
+    "sigle": "UDC",
+    "sieges": 41,
+    "famille": "centre"
+   },
+   {
+    "nom": "Union pour la démocratie française",
+    "sigle": "UDF",
+    "sieges": 90,
+    "famille": "centre"
+   },
+   {
+    "nom": "Rassemblement pour la République",
+    "sigle": "RPR",
+    "sieges": 130,
+    "famille": "droite"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 14,
+    "famille": "non-inscrits"
+   },
+   {
+    "nom": "Sièges vacants",
+    "sigle": "Vacants",
+    "sieges": 2,
+    "famille": "vacant"
+   }
+  ],
+  "president": "Laurent Fabius",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - IXe législature",
+    "url": "https://fr.wikipedia.org/wiki/IXe_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ],
+  "note": "Groupes+NI totalisent 575 sièges, non 577 : 2 sièges vacants au début de la législature à la suite de l'annulation des élections dans la 1re et 2e circonscriptions de l'Oise."
+ },
+ {
+  "numero": 10,
+  "debut": "1993-04-02",
+  "fin": "1997-04-21",
+  "election": "1993-03-21",
+  "sieges": 577,
+  "femmes": 35,
+  "groupes": [
+   {
+    "nom": "Communiste",
+    "sigle": "COM",
+    "sieges": 23,
+    "famille": "communiste"
+   },
+   {
+    "nom": "Socialiste",
+    "sigle": "SOC",
+    "sieges": 57,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "République et liberté",
+    "sigle": "RL",
+    "sieges": 23,
+    "famille": "divers"
+   },
+   {
+    "nom": "Union pour la démocratie française",
+    "sigle": "UDF",
+    "sieges": 215,
+    "famille": "centre"
+   },
+   {
+    "nom": "Rassemblement pour la République",
+    "sigle": "RPR",
+    "sieges": 257,
+    "famille": "droite"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 2,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "Philippe Séguin",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - Xe législature",
+    "url": "https://fr.wikipedia.org/wiki/Xe_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ]
+ },
+ {
+  "numero": 11,
+  "debut": "1997-06-12",
+  "fin": "2002-06-18",
+  "election": "1997-05-25",
+  "sieges": 577,
+  "femmes": 63,
+  "groupes": [
+   {
+    "nom": "Communiste",
+    "sigle": "COM",
+    "sieges": 36,
+    "famille": "communiste"
+   },
+   {
+    "nom": "Socialiste",
+    "sigle": "SOC",
+    "sieges": 250,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "Radical, citoyen et vert",
+    "sigle": "RCV",
+    "sieges": 33,
+    "famille": "centre-gauche"
+   },
+   {
+    "nom": "Union pour la démocratie française",
+    "sigle": "UDF",
+    "sieges": 113,
+    "famille": "centre"
+   },
+   {
+    "nom": "Rassemblement pour la République",
+    "sigle": "RPR",
+    "sieges": 140,
+    "famille": "droite"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 5,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "Laurent Fabius",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - XIe législature",
+    "url": "https://fr.wikipedia.org/wiki/XIe_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ]
+ },
+ {
+  "numero": 12,
+  "debut": "2002-06-19",
+  "fin": "2007-06-19",
+  "election": "2002-06-09",
+  "sieges": 577,
+  "femmes": 71,
+  "groupes": [
+   {
+    "nom": "Communistes et Républicains",
+    "sigle": "CR",
+    "sieges": 21,
+    "famille": "communiste"
+   },
+   {
+    "nom": "Socialiste",
+    "sigle": "SOC",
+    "sieges": 141,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "Union pour la démocratie française",
+    "sigle": "UDF",
+    "sieges": 29,
+    "famille": "centre"
+   },
+   {
+    "nom": "Union pour un mouvement populaire",
+    "sigle": "UMP",
+    "sieges": 365,
+    "famille": "droite"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 21,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "Jean-Louis Debré",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - XIIe législature",
+    "url": "https://fr.wikipedia.org/wiki/XIIe_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ]
+ },
+ {
+  "numero": 13,
+  "debut": "2007-06-20",
+  "fin": "2012-06-19",
+  "election": "2007-06-10",
+  "sieges": 577,
+  "femmes": 107,
+  "groupes": [
+   {
+    "nom": "Gauche démocrate et républicaine",
+    "sigle": "GDR",
+    "sieges": 24,
+    "famille": "communiste"
+   },
+   {
+    "nom": "Socialiste, radical, citoyen et divers gauche",
+    "sigle": "SRC",
+    "sieges": 204,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "Nouveau Centre",
+    "sigle": "NC",
+    "sieges": 22,
+    "famille": "centre"
+   },
+   {
+    "nom": "Union pour un mouvement populaire",
+    "sigle": "UMP",
+    "sieges": 320,
+    "famille": "droite"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 7,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "Bernard Accoyer",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - XIIIe législature",
+    "url": "https://fr.wikipedia.org/wiki/XIIIe_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   },
+   {
+    "label": "Assemblée nationale - archive Ve République",
+    "url": "https://www.assemblee-nationale.fr/histoire/leg5repnew.asp"
+   }
+  ]
+ },
+ {
+  "numero": 14,
+  "debut": "2012-06-26",
+  "fin": "2017-06-20",
+  "election": "2012-06-10",
+  "sieges": 577,
+  "femmes": 155,
+  "groupes": [
+   {
+    "nom": "Gauche démocrate et républicaine",
+    "sigle": "GDR",
+    "sieges": 15,
+    "famille": "communiste"
+   },
+   {
+    "nom": "Écologiste",
+    "sigle": "ECOLO",
+    "sieges": 18,
+    "famille": "ecologiste"
+   },
+   {
+    "nom": "Socialiste, républicain et citoyen",
+    "sigle": "SRC",
+    "sieges": 295,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "Radical, républicain, démocrate et progressiste",
+    "sigle": "RRDP",
+    "sieges": 15,
+    "famille": "centre-gauche"
+   },
+   {
+    "nom": "Union des démocrates et indépendants",
+    "sigle": "UDI",
+    "sieges": 29,
+    "famille": "centre"
+   },
+   {
+    "nom": "Union pour un mouvement populaire",
+    "sigle": "UMP",
+    "sieges": 196,
+    "famille": "droite"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 9,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "Claude Bartolone",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - XIVe législature",
+    "url": "https://fr.wikipedia.org/wiki/XIVe_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ]
+ },
+ {
+  "numero": 15,
+  "debut": "2017-06-27",
+  "fin": "2022-06-21",
+  "election": "2017-06-11",
+  "sieges": 577,
+  "femmes": 224,
+  "groupes": [
+   {
+    "nom": "Gauche démocrate et républicaine",
+    "sigle": "GDR",
+    "sieges": 16,
+    "famille": "communiste"
+   },
+   {
+    "nom": "La France insoumise",
+    "sigle": "LFI",
+    "sieges": 17,
+    "famille": "gauche-radicale"
+   },
+   {
+    "nom": "Nouvelle Gauche",
+    "sigle": "NG",
+    "sieges": 31,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "La République en marche",
+    "sigle": "LREM",
+    "sieges": 314,
+    "famille": "centre"
+   },
+   {
+    "nom": "Mouvement démocrate et apparentés",
+    "sigle": "MoDem",
+    "sieges": 47,
+    "famille": "centre"
+   },
+   {
+    "nom": "Les Constructifs : républicains, UDI, indépendants",
+    "sigle": "LC",
+    "sieges": 35,
+    "famille": "centre"
+   },
+   {
+    "nom": "Les Républicains",
+    "sigle": "LR",
+    "sieges": 100,
+    "famille": "droite"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 17,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "François de Rugy",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - XVe législature",
+    "url": "https://fr.wikipedia.org/wiki/XVe_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ]
+ },
+ {
+  "numero": 16,
+  "debut": "2022-06-28",
+  "fin": "2024-06-09",
+  "election": "2022-06-12",
+  "sieges": 577,
+  "femmes": 215,
+  "groupes": [
+   {
+    "nom": "Gauche démocrate et républicaine – NUPES",
+    "sigle": "GDR-NUPES",
+    "sieges": 22,
+    "famille": "communiste"
+   },
+   {
+    "nom": "La France insoumise – NUPES",
+    "sigle": "LFI-NUPES",
+    "sieges": 75,
+    "famille": "gauche-radicale"
+   },
+   {
+    "nom": "Écologiste – NUPES",
+    "sigle": "ECO-NUPES",
+    "sieges": 23,
+    "famille": "ecologiste"
+   },
+   {
+    "nom": "Socialistes et apparentés",
+    "sigle": "SOC",
+    "sieges": 31,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "Renaissance",
+    "sigle": "RE",
+    "sieges": 172,
+    "famille": "centre"
+   },
+   {
+    "nom": "Démocrate (MoDem et indépendants)",
+    "sigle": "DEM",
+    "sieges": 48,
+    "famille": "centre"
+   },
+   {
+    "nom": "Horizons et apparentés",
+    "sigle": "HOR",
+    "sieges": 30,
+    "famille": "centre"
+   },
+   {
+    "nom": "Libertés, indépendants, outre-mer et territoires",
+    "sigle": "LIOT",
+    "sieges": 16,
+    "famille": "divers"
+   },
+   {
+    "nom": "Les Républicains",
+    "sigle": "LR",
+    "sieges": 62,
+    "famille": "droite"
+   },
+   {
+    "nom": "Rassemblement national",
+    "sigle": "RN",
+    "sieges": 89,
+    "famille": "extreme-droite"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 9,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "Yaël Braun-Pivet",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - XVIe législature",
+    "url": "https://fr.wikipedia.org/wiki/XVIe_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ]
+ },
+ {
+  "numero": 17,
+  "debut": "2024-07-18",
+  "fin": null,
+  "election": "2024-06-30",
+  "sieges": 577,
+  "femmes": 208,
+  "groupes": [
+   {
+    "nom": "Gauche démocrate et républicaine",
+    "sigle": "GDR",
+    "sieges": 17,
+    "famille": "communiste"
+   },
+   {
+    "nom": "La France insoumise – Nouveau Front populaire",
+    "sigle": "LFI-NFP",
+    "sieges": 72,
+    "famille": "gauche-radicale"
+   },
+   {
+    "nom": "Écologiste et social",
+    "sigle": "EcoS",
+    "sieges": 38,
+    "famille": "ecologiste"
+   },
+   {
+    "nom": "Socialistes et apparentés",
+    "sigle": "SOC",
+    "sieges": 66,
+    "famille": "socialiste"
+   },
+   {
+    "nom": "Libertés, indépendants, outre-mer et territoires",
+    "sigle": "LIOT",
+    "sieges": 21,
+    "famille": "divers"
+   },
+   {
+    "nom": "Les Démocrates",
+    "sigle": "Dem",
+    "sieges": 36,
+    "famille": "centre"
+   },
+   {
+    "nom": "Ensemble pour la République",
+    "sigle": "EPR",
+    "sieges": 99,
+    "famille": "centre"
+   },
+   {
+    "nom": "Horizons et indépendants",
+    "sigle": "HOR",
+    "sieges": 31,
+    "famille": "centre"
+   },
+   {
+    "nom": "Droite républicaine",
+    "sigle": "DR",
+    "sieges": 47,
+    "famille": "droite"
+   },
+   {
+    "nom": "À Droite",
+    "sigle": "ÀD",
+    "sieges": 16,
+    "famille": "droite"
+   },
+   {
+    "nom": "Rassemblement national",
+    "sigle": "RN",
+    "sieges": 126,
+    "famille": "extreme-droite"
+   },
+   {
+    "nom": "Non-inscrits",
+    "sigle": "NI",
+    "sieges": 8,
+    "famille": "non-inscrits"
+   }
+  ],
+  "president": "Yaël Braun-Pivet",
+  "sources": [
+   {
+    "label": "Assemblée nationale - Femmes élues députées depuis 1945",
+    "url": "https://www.assemblee-nationale.fr/elections/femmes-deputees.asp"
+   },
+   {
+    "label": "Wikipédia - Assemblée nationale (France), historique des législatures",
+    "url": "https://fr.wikipedia.org/wiki/Assembl%C3%A9e_nationale_(France)"
+   },
+   {
+    "label": "Wikipédia - Composition de l'Assemblée nationale française par législature",
+    "url": "https://fr.wikipedia.org/wiki/Composition_de_l'Assembl%C3%A9e_nationale_fran%C3%A7aise_par_l%C3%A9gislature"
+   },
+   {
+    "label": "Wikipédia - XVIIe législature",
+    "url": "https://fr.wikipedia.org/wiki/XVIIe_l%C3%A9gislature_de_la_Cinqui%C3%A8me_R%C3%A9publique_fran%C3%A7aise"
+   }
+  ],
+  "note": "Le groupe d'Éric Ciotti s'appelait « À Droite » (ÀD) à l'ouverture de la législature le 18 juillet 2024 ; renommé « UDR » le 11 septembre 2024, puis « Union des droites pour la République » le 4 septembre 2025. EPR (ex-Renaissance), Droite républicaine (ex-LR), Horizons et indépendants et Écologiste et social portaient déjà leur nom actuel dès la constitution officielle des groupes."
+ }
+]
