@@ -1,0 +1,22 @@
+# Documents de travail : jamais publiés
+_planning/
+*.plan.md
+notes/
+
+# Dépendances et builds
+node_modules/
+.astro/
+website/dist/
+.venv/
+__pycache__/
+*.pyc
+
+# Données brutes et intermédiaires (republiées via le pipeline, pas via Git)
+database/data/
+database/dist/
+
+# Environnement
+.env
+.env.*
+.DS_Store
+.wrangler/

@@ -1,0 +1,11 @@
+[project]
+name = "parlementeur-database"
+version = "0.1.0"
+description = "Pipeline de collecte et de transformation des données publiques de Parlementeur"
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb>=1.5.5",
+    "httpx>=0.28.1",
+    "lxml>=6.1.3",
+    "orjson>=3.12.0",
+]
