@@ -255,6 +255,7 @@ def main() -> None:
         )
     write_json(DIST / "scrutins.json", index)
     write_json(DIST / "lobbying.json", lobby)
+    shutil.copyfile(ROOT / "curated" / "sieges.json", DIST / "sieges.json")
 
     n_votes = sum(len(s["votes"]) for s in scrutins)
     checks = [
