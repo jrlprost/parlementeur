@@ -70,6 +70,9 @@ const gcol = new Map(groupes.map((g) => [g.sigle, g.couleur]));
     });
   });
   const f = document.querySelector<HTMLInputElement>('#filter')!;
+  // Lien depuis la recherche : /deputes/?groupe=SOC
+  const g = new URLSearchParams(location.search).get('groupe');
+  if (g) rows.forEach((r) => (r.hidden = r.dataset.groupe !== g));
   f.addEventListener('input', () => {
     const q = f.value.trim().toLowerCase();
     rows.forEach((r) => (r.hidden = !!q && !r.dataset.search!.includes(q)));
