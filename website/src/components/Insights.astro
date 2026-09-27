@@ -87,14 +87,85 @@ const view = blocks.map((b) => {
         </div>
       )}
 
+      {b.kind === 'svg' && (
+        <figure class="fig">
+          <Fragment set:html={b.svg} />
+          {b.legend && <p class="plegend small">{b.legend.map((l: any) => <><i style={`background:${l.color}`}></i>{l.label} </>)}</p>}
+          <p class="pick small" aria-live="polite"></p>
+        </figure>
+      )}
+
+      {b.kind === 'coalition' && (
+        <div class="coal" data-total={b.total}>
+          <div class="chips">
+            {b.groups.map((g: any) => <button type="button" aria-pressed="false" data-n={g.n} data-sigle={g.sigle} title={g.nom}><i style={`background:${g.color}`}></i>{g.sigle} <span class="num">{g.n}</span></button>)}
+          </div>
+          <div class="cbar" aria-hidden="true">
+            {b.groups.map((g: any) => <span data-sigle={g.sigle} style={`width:0;background:${g.color}`}></span>)}
+            <i class="line" style={`left:${((Math.floor(b.total / 2) + 1) / b.total) * 100}%`}></i>
+          </div>
+          <p class="cstatus" aria-live="polite">Touchez des groupes pour former une majorité.</p>
+        </div>
+      )}
+
       {b.kind === 'names' && b.names.length > 0 && (
-        <ol class="ranked">{b.names.map((n: any) => <li><a href={`/deputes/${n.s}/`}>{n.n}</a> <span class="muted">{n.g}</span>{n.v && <b class="num">{n.v}</b>}</li>)}</ol>
+        b.names.length > 12 ? (
+          <details class="longlist"><summary>Voir les {b.names.length} noms</summary>
+            <ul class="names">{b.names.map((n: any) => <li><a href={`/deputes/${n.s}/`}>{n.n}</a> <span class="muted">{n.g}{n.v ? ` · ${n.v}` : ''}</span></li>)}</ul>
+          </details>
+        ) : (
+          <ol class="ranked">{b.names.map((n: any) => <li><a href={`/deputes/${n.s}/`}>{n.n}</a> <span class="muted">{n.g}</span>{n.v && <b class="num">{n.v}</b>}</li>)}</ol>
+        )
       )}
 
       {b.note && <p class="note small muted">{b.note}</p>}
     </section>
   ))}
 </div>
+
+<script>
+  // Toucher un point d'un graphique affiche le député concerné, avec un lien vers sa fiche.
+  for (const fig of document.querySelectorAll<HTMLElement>('.insights .fig')) {
+    const out = fig.querySelector<HTMLElement>('.pick')!;
+    let sel: Element | null = null;
+    fig.querySelector('svg')?.addEventListener('click', (e) => {
+      const el = (e.target as Element).closest('[data-s]');
+      if (!el) return;
+      sel?.classList.remove('on');
+      sel = el;
+      el.classList.add('on');
+      const d = (el as HTMLElement).dataset;
+      out.innerHTML = '';
+      const a = document.createElement('a');
+      a.href = `/deputes/${d.s}/`;
+      a.textContent = d.n!;
+      out.append(a, ` · ${d.g}${d.v ? ' · ' + d.v : ''}`);
+    });
+  }
+  // Constructeur de coalition.
+  for (const box of document.querySelectorAll<HTMLElement>('.insights .coal')) {
+    const total = Number(box.dataset.total);
+    const maj = Math.floor(total / 2) + 1;
+    const status = box.querySelector<HTMLElement>('.cstatus')!;
+    box.querySelectorAll<HTMLButtonElement>('.chips button').forEach((b) =>
+      b.addEventListener('click', () => {
+        b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'));
+        let sum = 0;
+        const picked: string[] = [];
+        box.querySelectorAll<HTMLButtonElement>('.chips button').forEach((x) => {
+          const on = x.getAttribute('aria-pressed') === 'true';
+          box.querySelector<HTMLElement>(`.cbar span[data-sigle="${x.dataset.sigle}"]`)!.style.width = on ? `${(Number(x.dataset.n) / total) * 100}%` : '0';
+          if (on) { sum += Number(x.dataset.n); picked.push(x.dataset.sigle!); }
+        });
+        status.innerHTML = !picked.length
+          ? 'Touchez des groupes pour former une majorité.'
+          : sum >= maj
+            ? `<b>${picked.join(' + ')} : ${sum} sièges.</b> Majorité absolue atteinte, avec ${sum - maj} sièges d'avance.`
+            : `<b>${picked.join(' + ')} : ${sum} sièges.</b> Il manque ${maj - sum} sièges pour la majorité absolue (${maj}).`;
+      }),
+    );
+  }
+</script>
 
 <style>
   .insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 20px; }
@@ -127,5 +198,35 @@ const view = blocks.map((b) => {
   .ptrack span { height: 100%; border-radius: 2px; }
   .ranked { margin: 0; padding-left: 1.4em; display: grid; gap: 4px; font-size: 0.92rem; }
   .ranked b { float: right; font-weight: 600; }
+  .fig { margin: 0; display: grid; gap: 6px; }
+  .fig :global(svg.chart) { width: 100%; height: auto; display: block; overflow: visible; }
+  .fig :global(.tk), .fig :global(.vl) { font-size: 9.5px; fill: var(--ink-62); font-family: var(--sans); }
+  .fig :global(.rl) { font-size: 10px; fill: var(--ink); font-weight: 600; font-family: var(--sans); }
+  .fig :global(.hd) { font-size: 11px; fill: var(--ink); font-weight: 600; font-family: var(--sans); }
+  .fig :global(.an) { font-size: 10px; fill: var(--ink); font-weight: 600; font-family: var(--sans); }
+  .fig :global(.qt) { font-size: 9.5px; fill: var(--ink-62); font-style: italic; font-family: var(--sans); }
+  .fig :global(.rt) { font-size: 9px; fill: var(--ink-62); font-family: var(--sans); }
+  .fig :global(.grid) { stroke: var(--ink-8); stroke-width: 1; }
+  .fig :global(.base) { stroke: var(--ink-16); stroke-width: 1; }
+  .fig :global(.ref) { stroke: var(--ink-62); stroke-width: 1; stroke-dasharray: 3 3; }
+  .fig :global(.med) { stroke: var(--ink); stroke-width: 2; }
+  .fig :global(.curve) { fill: none; stroke: var(--ramp-to); stroke-width: 2.5; }
+  .fig :global(.mk) { fill: var(--ramp-to); }
+  .fig :global(.col) { fill: var(--ramp-to); }
+  .fig :global([data-s]) { cursor: pointer; }
+  .fig :global([data-s].on) { stroke: var(--ink); stroke-width: 2; }
+  .pick { min-height: 1.4em; }
+  .pick :global(a) { font-weight: 600; }
+  .coal { display: grid; gap: 12px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--ink-16); background: var(--bg); border-radius: 999px; padding: 6px 11px; font-size: 0.88rem; }
+  .chips button i { width: 10px; height: 10px; border-radius: 50%; }
+  .chips button span { color: var(--ink-62); }
+  .chips button[aria-pressed='true'] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); background: var(--ink-4); }
+  .cbar { position: relative; display: flex; height: 26px; background: var(--ink-8); border-radius: 4px; overflow: hidden; }
+  .cbar span { height: 100%; transition: width 0.35s ease; }
+  .cbar .line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); }
+  .cstatus { font-size: 1rem; }
+  .longlist summary { cursor: pointer; font-weight: 600; }
   .note { border-left: 2px solid var(--ink-16); padding-left: 10px; }
 </style>
