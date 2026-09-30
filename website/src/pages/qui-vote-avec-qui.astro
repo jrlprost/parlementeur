@@ -1,0 +1,154 @@
+---
+import Base from '../layouts/Base.astro';
+import { load, readOptional, fmtInt } from '../lib/data';
+import { matrix, mapPoints } from '../lib/charts';
+
+type Prox = { groupes: string[]; accord: number[][]; scrutins: number[][]; carte: { points: Record<string, [number, number]>; variance: [number, number]; scrutins: number; seuil: number } };
+const p = readOptional<Prox>('proximite.json')!;
+const { deputes, groupes } = load();
+const gmap = new Map(groupes.map((g) => [g.sigle, g]));
+const labels = p.groupes.map((s) => ({ sigle: s, color: gmap.get(s)?.couleur ?? '#999' }));
+
+// Pour chaque groupe : l'allié le plus proche et le groupe le plus éloigné, en toutes lettres.
+const pairs = p.groupes.map((s, i) => {
+  const others = p.groupes.map((o, j) => ({ o, v: p.accord[i][j], n: p.scrutins[i][j] })).filter((x, j) => j !== i && x.n >= 100);
+  others.sort((a, b) => b.v - a.v);
+  return { s, nom: gmap.get(s)?.nom ?? s, color: gmap.get(s)?.couleur, best: others[0], worst: others[others.length - 1] };
+});
+
+const bySlug = new Map(deputes.map((d) => [d.slug, d]));
+const pts = Object.entries(p.carte.points).map(([s, [x, y]]) => {
+  const d = bySlug.get(s)!;
+  return { x, y, s, n: `${d.prenom} ${d.nom}`, g: d.groupe, c: gmap.get(d.groupe)?.couleur ?? '#999' };
+});
+const pc = (x: number) => `${Math.round(x * 100)} %`;
+---
+<Base title="Qui vote avec qui" description="Quels groupes votent ensemble à l'Assemblée, et quels députés votent comme qui : la carte de tous les votes de la législature." section="proximite">
+  <div class="stack" style="--gap:44px">
+    <header class="stack" style="--gap:12px">
+      <p class="kicker">Votes · {fmtInt(p.carte.scrutins)} scrutins publics analysés</p>
+      <h1>Qui vote avec qui</h1>
+      <p class="lede">Les étiquettes ne disent pas tout. Voici, scrutin après scrutin, quels groupes et quels députés votent vraiment de la même façon.</p>
+    </header>
+
+    <section class="stack" style="--gap:14px">
+      <h2>Chaque groupe, et celui qui lui ressemble le plus</h2>
+      <ul class="allies">
+        {pairs.map((x) => (
+          <li>
+            <p class="g"><i style={`background:${x.color}`}></i><b>{x.s}</b> <span class="muted small">{x.nom}</span></p>
+            <p class="small">Vote le plus souvent comme <b>{x.best.o}</b> <span class="num">({pc(x.best.v)} des scrutins)</span>, le moins souvent comme <b>{x.worst.o}</b> <span class="num">({pc(x.worst.v)})</span>.</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="stack" style="--gap:14px">
+      <h2>Tous les groupes, deux à deux</h2>
+      <p class="muted">Part des scrutins où deux groupes ont pris la même position (pour, contre ou abstention, selon la majorité de leurs membres). Plus la case est foncée, plus ils votent ensemble. Touchez une case.</p>
+      <figure class="mx">
+        <Fragment set:html={matrix(labels, p.accord, p.scrutins)} />
+        <p class="pick" aria-live="polite">&nbsp;</p>
+      </figure>
+    </section>
+
+    <section class="stack" style="--gap:14px" id="carte">
+      <h2>La carte des votes des {fmtInt(pts.length)} députés</h2>
+      <p class="muted">Chaque point est un député. Deux points proches : deux députés qui votent souvent pareil. La position ne dit rien de gauche ou de droite en soi, seulement des ressemblances de vote. Touchez un point, ou cherchez un nom.</p>
+      <input id="mq" type="search" placeholder="Chercher un député sur la carte" autocomplete="off" />
+      <figure class="vmap">
+        <Fragment set:html={mapPoints(pts)} />
+        <p class="pick" aria-live="polite">&nbsp;</p>
+      </figure>
+      <ul class="glegend">{labels.map((l) => <li><i style={`background:${l.color}`}></i>{l.sigle}</li>)}</ul>
+      <p class="small"><a href="/comparer/">Comparer deux députés vote par vote →</a></p>
+    </section>
+
+    <section class="stack" style="--gap:10px">
+      <h2 class="h3">Comment c'est calculé</h2>
+      <p class="muted"><b>Groupes.</b> Pour chaque scrutin, l'Assemblée publie la position majoritaire de chaque groupe. On compte la part des scrutins où deux groupes ont eu la même. Les motions de censure sont exclues (on ne peut y voter que pour).</p>
+      <p class="muted"><b>Carte.</b> Analyse en composantes principales des votes nominatifs (pour = +1, contre = −1, abstention = 0) sur les {fmtInt(p.carte.scrutins)} scrutins comptant au moins 30 votants. Les absences ne rapprochent ni n'éloignent personne. L'axe horizontal résume {pc(p.carte.variance[0])} des différences de vote, l'axe vertical {pc(p.carte.variance[1])}. Seuls les députés ayant voté au moins {p.carte.seuil} fois sont placés.</p>
+      <p class="src">Source : <a href="https://data.assemblee-nationale.fr/">Assemblée nationale, scrutins publics (open data)</a>. <a href="/methode/">Méthode</a>.</p>
+    </section>
+  </div>
+</Base>
+
+<script>
+  // Matrice : toucher une case l'explique en toutes lettres.
+  const mx = document.querySelector<HTMLElement>('.mx')!;
+  const mxOut = mx.querySelector<HTMLElement>('.pick')!;
+  mx.querySelector('svg')!.addEventListener('click', (e) => {
+    const r = (e.target as Element).closest<SVGRectElement>('rect[data-a]');
+    if (!r || r.dataset.a === r.dataset.b) return;
+    mx.querySelectorAll('rect.on').forEach((x) => x.classList.remove('on'));
+    r.classList.add('on');
+    mxOut.innerHTML = `<b>${r.dataset.a}</b> et <b>${r.dataset.b}</b> ont voté de la même façon dans <b>${r.dataset.v} %</b> des ${Number(r.dataset.k).toLocaleString('fr-FR')} scrutins où les deux groupes ont pris position.`;
+  });
+
+  // Carte : point le plus proche du doigt, et recherche par nom.
+  const fig = document.querySelector<HTMLElement>('.vmap')!;
+  const svg = fig.querySelector<SVGSVGElement>('svg')!;
+  const out = fig.querySelector<HTMLElement>('.pick')!;
+  const dots = [...svg.querySelectorAll<SVGCircleElement>('circle[data-s]')];
+  let sel: SVGCircleElement | null = null;
+  function pick(c: SVGCircleElement) {
+    sel?.classList.remove('on');
+    sel = c;
+    c.classList.add('on');
+    c.parentNode!.appendChild(c);
+    const d = c.dataset;
+    out.innerHTML = '';
+    const a = document.createElement('a');
+    a.href = `/deputes/${d.s}/`;
+    a.textContent = d.n!;
+    const cmp = document.createElement('a');
+    cmp.href = `/comparer/?a=${d.s}`;
+    cmp.textContent = 'comparer';
+    out.append(a, ` · ${d.g} · `, cmp);
+  }
+  svg.addEventListener('click', (e) => {
+    let best: SVGCircleElement | null = null, bd = Infinity;
+    for (const c of dots) {
+      const r = c.getBoundingClientRect();
+      const d = (r.x + r.width / 2 - e.clientX) ** 2 + (r.y + r.height / 2 - e.clientY) ** 2;
+      if (d < bd) { bd = d; best = c; }
+    }
+    if (best && bd <= 24 * 24) pick(best);
+  });
+  const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const q = document.querySelector<HTMLInputElement>('#mq')!;
+  q.addEventListener('input', () => {
+    const v = norm(q.value.trim());
+    svg.classList.toggle('filtering', v.length >= 2);
+    let first: SVGCircleElement | null = null;
+    for (const c of dots) {
+      const hit = v.length >= 2 && norm(c.dataset.n!).includes(v);
+      c.classList.toggle('hit', hit);
+      if (hit && !first) first = c;
+    }
+    if (first && dots.filter((c) => c.classList.contains('hit')).length === 1) pick(first);
+  });
+</script>
+
+<style>
+  .allies { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px 28px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+  .allies li { border-top: 1px solid var(--ink-16); padding-top: 10px; display: grid; gap: 4px; }
+  .allies i, .glegend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  .mx, .vmap { margin: 0; display: grid; gap: 8px; max-width: 640px; }
+  .mx :global(svg), .vmap :global(svg) { width: 100%; height: auto; display: block; overflow: visible; }
+  .mx :global(.rl) { font-size: 11.5px; font-weight: 600; fill: var(--ink); font-family: var(--sans); }
+  .mx :global(.mv) { font-size: 11px; fill: var(--ink); font-family: var(--sans); pointer-events: none; font-variant-numeric: tabular-nums; }
+  .mx :global(.mv.lt) { fill: var(--bg); }
+  .mx :global(rect[data-a]) { cursor: pointer; }
+  .mx :global(rect.on) { stroke: var(--ink); stroke-width: 2; }
+  .vmap :global(.grid) { stroke: var(--ink-8); }
+  .vmap :global(circle[data-s]) { cursor: pointer; transition: opacity .2s; }
+  .vmap :global(svg.filtering circle[data-s]:not(.hit)) { opacity: 0.12; }
+  .vmap :global(circle.hit) { stroke: var(--ink); stroke-width: 1.5; }
+  .vmap :global(circle.on) { stroke: var(--ink); stroke-width: 2.5; r: 5; }
+  .pick { min-height: 1.5em; }
+  .pick :global(a) { font-weight: 600; }
+  #mq { font: inherit; font-size: 16px; padding: 11px 13px; border: 1px solid var(--ink-16); border-radius: 8px; background: var(--bg); color: var(--ink); max-width: 420px; width: 100%; }
+  .glegend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.85rem; }
+  .h3 { font-size: var(--step-2); }
+</style>

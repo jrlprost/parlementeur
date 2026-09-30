@@ -193,7 +193,8 @@ export function treemap(items: { label: string; v: number; color?: string }[], W
         (fits ? `<text x="${f1(x + 6)}" y="${f1(y + 16)}" class="tm${light ? ' dk' : ''}">${line1}</text><text x="${f1(x + 6)}" y="${f1(y + 29)}" class="tmv${light ? ' dk' : ''}">${i.v.toLocaleString('fr-FR')}</text>` : '') + '</g>';
     })
     .join('');
-  return `<svg viewBox="0 0 ${W} ${H}" class="chart treemap" role="img">${body}</svg>`;
+  const alt = nodes.slice(0, 8).map((n) => `${n.label} : ${n.v.toLocaleString('fr-FR')}`).join(' ; ');
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart treemap" role="img" aria-label="${esc(alt)}">${body}</svg>`;
 }
 
 /** Bande de répartition : tous les députés en points discrets, le député concerné en évidence. */
@@ -206,4 +207,38 @@ export function strip(all: number[], me: number, ax: { min: number; max: number;
   const dots = all.map((v, i) => `<circle cx="${f1(x(v))}" cy="${f1(17 + (((i * 37) % 11) - 5) * 1.6)}" r="1.7" class="sd"/>`).join('');
   const gm = groupMed != null ? `<line x1="${f1(x(groupMed))}" x2="${f1(x(groupMed))}" y1="4" y2="30" class="gm"/>` : '';
   return `<svg viewBox="0 0 ${W} ${H}" class="chart strip" role="img">${dots}${gm}<circle cx="${f1(x(me))}" cy="17" r="6.5" fill="${color}" stroke="var(--bg)" stroke-width="2"/></svg>`;
+}
+
+/** Carte des votes : chaque député placé selon ses votes (deux premières composantes principales). */
+export function mapPoints(pts: { x: number; y: number; s: string; n: string; g: string; c: string }[], opts: { highlight?: string; dim?: boolean } = {}): string {
+  const W = 360, H = 280, P = 10;
+  const X = (v: number) => P + ((v + 1) / 2) * (W - 2 * P);
+  const Y = (v: number) => H - P - ((v + 1) / 2) * (H - 2 * P);
+  const body = pts
+    .filter((p) => p.s !== opts.highlight)
+    .map((p) => dot(X(p.x), Y(p.y), 2.6, p.c, { v: 0, s: p.s, n: p.n, g: p.g, label: p.g }, opts.dim ? ' fill-opacity=".35"' : ' fill-opacity=".85"'))
+    .join('');
+  const h = pts.find((p) => p.s === opts.highlight);
+  const hi = h ? `<circle cx="${f1(X(h.x))}" cy="${f1(Y(h.y))}" r="8" fill="none" stroke="var(--ink)" stroke-width="2"/>${dot(X(h.x), Y(h.y), 4, h.c, { v: 0, s: h.s, n: h.n, g: h.g, label: h.g })}` : '';
+  const axes = `<line x1="${P}" x2="${W - P}" y1="${f1(Y(0))}" y2="${f1(Y(0))}" class="grid"/><line x1="${f1(X(0))}" x2="${f1(X(0))}" y1="${P}" y2="${H - P}" class="grid"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart map" role="img" aria-label="Carte des votes des députés">${axes}${body}${hi}</svg>`;
+}
+
+/** Matrice d'accord entre groupes : une case par paire, couleur et pourcentage. */
+export function matrix(labels: { sigle: string; color: string }[], rate: number[][], counts: number[][]): string {
+  const n = labels.length, L = 50, T = 50, cell = (360 - L) / n;
+  const W = L + n * cell, H = T + n * cell;
+  let body = '';
+  labels.forEach((a, i) => {
+    body += `<text x="${L - 6}" y="${f1(T + i * cell + cell / 2 + 4)}" text-anchor="end" class="rl">${esc(a.sigle)}</text>`;
+    body += `<text transform="translate(${f1(L + i * cell + cell / 2 + 4)} ${T - 6}) rotate(-60)" class="rl">${esc(a.sigle)}</text>`;
+    labels.forEach((b, j) => {
+      const v = rate[i][j];
+      const t = Math.round(Math.max(0, (v - 0.2) / 0.8) * 100);
+      const fill = i === j ? 'var(--ink-8)' : `color-mix(in srgb, var(--ramp-to) ${t}%, var(--ramp-from))`;
+      body += `<rect x="${f1(L + j * cell + 0.75)}" y="${f1(T + i * cell + 0.75)}" width="${f1(cell - 1.5)}" height="${f1(cell - 1.5)}" rx="2" fill="${fill}" data-a="${esc(a.sigle)}" data-b="${esc(b.sigle)}" data-v="${Math.round(v * 100)}" data-k="${counts[i][j]}"/>`;
+      if (i !== j) body += `<text x="${f1(L + j * cell + cell / 2)}" y="${f1(T + i * cell + cell / 2 + 3.5)}" text-anchor="middle" class="mv${t > 55 ? ' lt' : ''}">${Math.round(v * 100)}</text>`;
+    });
+  });
+  return `<svg viewBox="0 0 ${f1(W)} ${f1(H)}" class="chart matrix" role="img" aria-label="Part des scrutins où deux groupes ont voté de la même façon">${body}</svg>`;
 }

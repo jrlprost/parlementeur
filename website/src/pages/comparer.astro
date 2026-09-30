@@ -1,0 +1,175 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Comparer deux députés" description="Choisissez deux députés : Parlementeur compare tous leurs votes, scrutin par scrutin, et montre où ils se séparent." section="comparer">
+  <div class="stack" style="--gap:28px">
+    <header class="stack" style="--gap:12px">
+      <p class="kicker">Votes · comparateur</p>
+      <h1>Comparer deux députés</h1>
+      <p class="lede">Votent-ils pareil ? Choisissez deux députés : tous leurs votes sont comparés, scrutin par scrutin.</p>
+    </header>
+
+    <div class="pickers">
+      {['a', 'b'].map((k, i) => (
+        <div class="picker" data-k={k}>
+          <label for={`p-${k}`}>{i === 0 ? 'Premier député' : 'Second député'}</label>
+          <input id={`p-${k}`} type="search" placeholder="Nom ou prénom" autocomplete="off" enterkeyhint="search" />
+          <ul class="sug" role="listbox" hidden></ul>
+          <div class="chosen" hidden></div>
+        </div>
+      ))}
+    </div>
+
+    <div id="res" aria-live="polite"></div>
+
+    <section class="stack" style="--gap:8px">
+      <h2 class="h3">Comment c'est calculé</h2>
+      <p class="muted">On ne compare que les scrutins publics où les deux députés ont voté (en personne ou par délégation). « D'accord » : même vote. « Opposés » : l'un pour, l'autre contre. Une abstention face à un vote pour ou contre compte comme un désaccord partiel. <a href="/qui-vote-avec-qui/">Voir la carte de tous les votes</a>.</p>
+      <p class="src">Source : <a href="https://data.assemblee-nationale.fr/">Assemblée nationale, scrutins publics (open data)</a>.</p>
+    </section>
+  </div>
+</Base>
+
+<script>
+  type Card = [string, string, string, string, string, number | null, number];
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[-'’]/g, ' ');
+  const cache = new Map<string, Promise<any>>();
+  const get = (u: string, text = false) => {
+    if (!cache.has(u)) cache.set(u, fetch(u).then((r) => (r.ok ? (text ? r.text() : r.json()) : null)));
+    return cache.get(u)!;
+  };
+  const cards = get('/cartes.json') as Promise<Record<string, Card>>;
+  const chosen: Record<string, string | null> = { a: null, b: null };
+  const res = document.querySelector<HTMLElement>('#res')!;
+  const LBL: Record<string, string> = { p: 'Pour', c: 'Contre', a: 'Abst.' };
+
+  function setChosen(k: string, slug: string | null, all: Record<string, Card>) {
+    chosen[k] = slug;
+    const box = document.querySelector<HTMLElement>(`.picker[data-k="${k}"]`)!;
+    const input = box.querySelector('input')!;
+    const out = box.querySelector<HTMLElement>('.chosen')!;
+    if (slug && all[slug]) {
+      const [n, g, gn, col, circo, , ph] = all[slug];
+      out.innerHTML = `${ph ? `<img src="/photos/${slug}.jpg" alt="" width="48" height="60">` : ''}<span><b>${esc(n)}</b><span class="muted small"><i class="dot" style="background:${col}"></i>${esc(g)} · ${esc(circo)}</span></span><button type="button" aria-label="Changer de député">Changer</button>`;
+      out.hidden = false;
+      input.hidden = true;
+      out.querySelector('button')!.addEventListener('click', () => { setChosen(k, null, all); input.hidden = false; input.value = ''; input.focus(); });
+    } else {
+      out.hidden = true;
+      input.hidden = false;
+    }
+    const p = new URLSearchParams();
+    if (chosen.a) p.set('a', chosen.a);
+    if (chosen.b) p.set('b', chosen.b);
+    history.replaceState(null, '', p.toString() ? `?${p}` : location.pathname);
+    compare(all);
+  }
+
+  async function compare(all: Record<string, Card>) {
+    const { a, b } = chosen;
+    if (!a || !b) { res.innerHTML = a || b ? '<p class="muted">Choisissez le second député.</p>' : ''; return; }
+    if (a === b) { res.innerHTML = '<p class="muted">Choisissez deux députés différents.</p>'; return; }
+    res.innerHTML = '<p class="muted">Comparaison en cours…</p>';
+    const [va, vb, idx] = await Promise.all([get(`/votes/${a}.txt`, true), get(`/votes/${b}.txt`, true), get('/votes/index.json')]);
+    if (!va || !vb || !idx) { res.innerHTML = '<p class="muted">Votes indisponibles pour ce député.</p>'; return; }
+    let same = 0, opp = 0, part = 0, sameS = 0, bothS = 0;
+    const diff: { i: number; x: string; y: string }[] = [];
+    for (let i = 0; i < idx.length; i++) {
+      const x = va[i].toLowerCase(), y = vb[i].toLowerCase();
+      if (!'pca'.includes(x) || !'pca'.includes(y) || x === '' || y === '') continue;
+      const sol = idx[i][3] === 1;
+      if (sol) bothS++;
+      if (x === y) { same++; if (sol) sameS++; }
+      else if (x !== 'a' && y !== 'a') { opp++; diff.push({ i, x, y }); }
+      else part++;
+    }
+    const both = same + opp + part;
+    const [na, , , ca] = all[a], [nb, , , cb] = all[b];
+    if (!both) { res.innerHTML = `<p class="muted">${esc(na)} et ${esc(nb)} n'ont jamais voté sur le même scrutin.</p>`; return; }
+    const pc = (x: number, n: number) => Math.round((x / n) * 100);
+    diff.reverse();
+    const rows = (list: typeof diff) => list.map(({ i, x, y }) => {
+      const [num, date, titre] = idx[i];
+      return `<li><a href="/scrutins/${num}/">${esc(titre)}</a><span class="vv"><span class="muted small">${date.split('-').reverse().join('/')}</span> <span class="chip v-${x}">${esc(na.split(' ').slice(-1)[0])} : ${LBL[x]}</span> <span class="chip v-${y}">${esc(nb.split(' ').slice(-1)[0])} : ${LBL[y]}</span></span></li>`;
+    }).join('');
+    const solDiff = diff.filter((d) => idx[d.i][3] === 1);
+    res.innerHTML = `
+      <section class="verdict">
+        <p class="big num">${pc(same, both)} %</p>
+        <p><b>${esc(na)}</b> et <b>${esc(nb)}</b> ont voté de la même façon dans <b>${pc(same, both)} %</b> des ${both.toLocaleString('fr-FR')} scrutins où tous deux ont voté.</p>
+        <div class="split" role="img" aria-label="${same} votes identiques, ${part} désaccords partiels, ${opp} votes opposés">
+          <span style="width:${(same / both) * 100}%" class="s-same"></span><span style="width:${(part / both) * 100}%" class="s-part"></span><span style="width:${(opp / both) * 100}%" class="s-opp"></span>
+        </div>
+        <ul class="leg small"><li><i class="s-same"></i>${same.toLocaleString('fr-FR')} identiques</li><li><i class="s-part"></i>${part.toLocaleString('fr-FR')} partiels (abstention)</li><li><i class="s-opp"></i>${opp.toLocaleString('fr-FR')} opposés</li></ul>
+        ${bothS ? `<p class="small">Sur les votes solennels (textes entiers) : <b>${pc(sameS, bothS)} %</b> d'accord, sur ${bothS} votes communs.</p>` : ''}
+        <p class="small muted">Scrutins votés : ${esc(na)} ${[...va].filter((c: string) => 'pcaPCA'.includes(c)).length.toLocaleString('fr-FR')}, ${esc(nb)} ${[...vb].filter((c: string) => 'pcaPCA'.includes(c)).length.toLocaleString('fr-FR')}. <a href="/deputes/${a}/">Fiche de ${esc(na)}</a> · <a href="/deputes/${b}/">Fiche de ${esc(nb)}</a></p>
+      </section>
+      ${solDiff.length ? `<section class="stack"><h2 class="h3">Où ils se séparent sur les grands textes</h2><ul class="diffs">${rows(solDiff.slice(0, 20))}</ul></section>` : ''}
+      ${diff.length ? `<section class="stack"><h2 class="h3">Leurs derniers votes opposés</h2><ul class="diffs">${rows(diff.slice(0, 15))}</ul>${diff.length > 15 ? `<p class="small muted">Et ${(diff.length - 15).toLocaleString('fr-FR')} autres votes opposés.</p>` : ''}</section>` : ''}`;
+    res.style.setProperty('--ca', ca);
+    res.style.setProperty('--cb', cb);
+  }
+
+  (async () => {
+    const all = await cards;
+    const list = Object.entries(all).map(([s, c]) => ({ s, n: c[0], g: c[1], k: norm(c[0]) }));
+    for (const box of document.querySelectorAll<HTMLElement>('.picker')) {
+      const k = box.dataset.k!;
+      const input = box.querySelector('input')!;
+      const sug = box.querySelector<HTMLUListElement>('.sug')!;
+      input.addEventListener('input', () => {
+        const words = norm(input.value.trim()).split(/\s+/).filter(Boolean);
+        if (!words.length || input.value.trim().length < 2) { sug.hidden = true; return; }
+        const hits = list.filter((x) => words.every((w) => x.k.includes(w))).slice(0, 8);
+        sug.innerHTML = hits.map((h) => `<li><button type="button" data-s="${h.s}">${esc(h.n)} <span class="muted small">${esc(h.g)}</span></button></li>`).join('') || '<li class="none">Aucun député trouvé.</li>';
+        sug.hidden = false;
+      });
+      sug.addEventListener('click', (e) => {
+        const b = (e.target as Element).closest<HTMLButtonElement>('button[data-s]');
+        if (!b) return;
+        sug.hidden = true;
+        setChosen(k, b.dataset.s!, all);
+        if (k === 'a' && !chosen.b) document.querySelector<HTMLInputElement>('#p-b')!.focus();
+      });
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sug.querySelector<HTMLButtonElement>('button[data-s]')?.click(); } });
+    }
+    const p = new URLSearchParams(location.search);
+    for (const k of ['a', 'b']) { const s = p.get(k); if (s && all[s]) setChosen(k, s, all); }
+    if (!p.get('a')) document.querySelector<HTMLInputElement>('#p-a')!.focus();
+  })();
+</script>
+
+<style>
+  .pickers { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+  .picker { display: grid; gap: 6px; align-content: start; }
+  .picker label { font-weight: 600; font-size: 0.9rem; }
+  .picker input { font: inherit; font-size: 16px; padding: 13px 14px; border: 1.5px solid var(--ink-62); border-radius: 10px; background: var(--bg); color: var(--ink); width: 100%; }
+  .sug { list-style: none; margin: 0; padding: 6px; border: 1px solid var(--ink-16); border-radius: 10px; }
+  .sug :global(button) { width: 100%; text-align: left; background: none; border: 0; padding: 11px 10px; border-radius: 6px; min-height: 44px; }
+  .sug :global(button:hover) { background: var(--ink-4); }
+  .sug :global(.none) { padding: 10px; color: var(--ink-62); }
+  .chosen { display: flex; gap: 12px; align-items: center; border: 1px solid var(--ink-16); border-radius: 10px; padding: 10px; }
+  .chosen :global(img) { border-radius: 4px; width: 48px; height: 60px; object-fit: cover; }
+  .chosen :global(> span) { display: grid; flex: 1; min-width: 0; }
+  .chosen :global(b) { font-family: var(--serif); font-size: 1.2rem; }
+  .chosen :global(button) { border: 1px solid var(--ink-16); background: var(--bg); border-radius: 999px; padding: 8px 12px; min-height: 40px; font-size: 0.85rem; }
+  :global(.dot) { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  #res { display: grid; gap: 28px; }
+  #res :global(.verdict) { display: grid; gap: 10px; border-top: 2px solid var(--ink); padding-top: 14px; }
+  #res :global(.big) { font-family: var(--serif); font-size: 3.4rem; font-weight: 600; line-height: 1; }
+  #res :global(.split) { display: flex; height: 18px; border-radius: 4px; overflow: hidden; background: var(--ink-8); max-width: 640px; }
+  #res :global(.s-same) { background: var(--vote-pour); }
+  #res :global(.s-part) { background: var(--vote-abstention); }
+  #res :global(.s-opp) { background: var(--vote-contre); }
+  #res :global(.leg) { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  #res :global(.leg i) { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+  #res :global(.diffs) { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  #res :global(.diffs li) { display: grid; gap: 4px; border-top: 1px solid var(--ink-8); padding-top: 10px; }
+  #res :global(.vv) { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  #res :global(.chip) { font-size: 0.78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; color: #0B0F14; }
+  #res :global(.v-p) { background: var(--vote-pour); }
+  #res :global(.v-c) { background: var(--vote-contre); }
+  #res :global(.v-a) { background: var(--vote-abstention); }
+  .h3 { font-size: var(--step-2); }
+</style>
