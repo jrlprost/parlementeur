@@ -3,17 +3,12 @@ import Base from '../layouts/Base.astro';
 import { readOptional, fmtDate, fmtInt } from '../lib/data';
 import type { Lobbying } from '../lib/lobbying';
 import { treemap } from '../lib/charts';
+import { orgName } from '../lib/text';
 
 const l = readOptional<Lobbying>('lobbying.json')!;
 const maxBen = Math.max(...l.beneficiaires.map((d) => d.n));
 const title = `${fmtInt(l.actions)} actions de lobbying auprès des parlementaires`;
-// Les noms arrivent souvent en capitales : on les remet en casse normale en gardant les sigles.
-const SMALL = new Set(['DE', 'DES', 'DU', 'LA', 'LE', 'LES', 'ET', 'EN', 'AU', 'AUX', 'POUR', 'SUR', 'PAR', 'A', "D'", "L'"]);
-const cap = (w: string) => w.charAt(0) + w.slice(1).toLowerCase();
-const nice = (s: string) =>
-  s === s.toUpperCase()
-    ? s.split(/\s+/).map((w, i) => (i > 0 && SMALL.has(w) ? w.toLowerCase() : w.length > 3 || i === 0 ? cap(w) : w)).join(' ')
-    : s;
+const nice = orgName;
 ---
 <Base title={title} description={`Depuis le ${fmtDate(l.depuis)}, ${fmtInt(l.organisations)} organisations ont déclaré des actions pour influencer députés et sénateurs. Sur quels sujets, pour le compte de qui, avec quels budgets.`} og="/og/lobbying.png" section="lobbying">
   <div class="stack" style="--gap:48px">
@@ -34,14 +29,15 @@ const nice = (s: string) =>
     <section class="stack" style="--gap:14px">
       <h2>Pour le compte de qui</h2>
       <p class="muted">Organisations au nom desquelles le plus d'actions ont été menées, directement ou par un cabinet de lobbying.</p>
-      <ol class="ben">
-        {l.beneficiaires.slice(0, 25).map((b) => (
-          <li>
+      <ol class="ben" id="ben">
+        {l.beneficiaires.slice(0, 25).map((b, i) => (
+          <li hidden={i >= 10}>
             <div class="bar"><span class="lbl">{nice(b.nom)}</span><div class="track"><div class="fill" style={`width:${(b.n / maxBen) * 100}%`}></div></div><span class="v num">{fmtInt(b.n)}</span></div>
             {b.via.length > 0 && <span class="via small muted">aussi via {b.via.map(nice).join(', ')}</span>}
           </li>
         ))}
       </ol>
+      <button type="button" class="showall" data-target="#ben">Voir les 15 suivants</button>
     </section>
 
     <section class="stack" style="--gap:14px">
@@ -50,13 +46,14 @@ const nice = (s: string) =>
       <div class="scroll">
         <table class="tbl">
           <thead><tr><th>Organisation</th><th>Catégorie</th><th class="r">Dépenses déclarées</th><th class="r">Actions vers le Parlement</th></tr></thead>
-          <tbody>
-            {l.gros.slice(0, 25).map((o) => (
-              <tr><td><a href={o.fiche}>{nice(o.nom)}</a></td><td class="muted small">{o.categorie}</td><td class="r num">{o.depense?.replace('> = ', '≥ ').replace(' euros', ' €').replace(' euros', ' €')}</td><td class="r num">{fmtInt(o.activites)}</td></tr>
+          <tbody id="gros">
+            {l.gros.slice(0, 25).map((o, i) => (
+              <tr hidden={i >= 10}><td><a href={o.fiche}>{nice(o.nom)}</a></td><td class="muted small">{o.categorie}</td><td class="r num">{o.depense?.replace('> = ', '≥ ').replace(' euros', ' €').replace(' euros', ' €')}</td><td class="r num">{fmtInt(o.activites)}</td></tr>
             ))}
           </tbody>
         </table>
       </div>
+      <button type="button" class="showall" data-target="#gros">Voir les 15 suivants</button>
     </section>
 
     <section class="stack" style="--gap:14px">

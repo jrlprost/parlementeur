@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import { load, readOptional, fmtDate, fmtInt } from '../lib/data';
 import { treemap } from '../lib/charts';
+import { orgName } from '../lib/text';
 
 type Rap = { rapport: string; titre: string; date: string; url: string; organisation: string | null; detail: string | null; etoile: boolean; registre: string[]; type: string; rapporteurs: string[] };
 type Com = { date: string; organe: string; texte: string; registre: string[]; presents: string[] };
@@ -20,7 +21,7 @@ const counts = new Map<string, { n: number; deps: Set<string> }>();
 for (const x of auditions) for (const o of x.registre) { const c = counts.get(o) ?? { n: 0, deps: new Set() }; c.n++; x.rapporteurs.forEach((s) => c.deps.add(s)); counts.set(o, c); }
 for (const x of r.commissions) for (const o of x.registre) { const c = counts.get(o) ?? { n: 0, deps: new Set() }; c.n++; counts.set(o, c); }
 const topOrgs = [...counts.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 28);
-const nice = (s: string) => (s === s.toUpperCase() ? s.toLowerCase().replace(/(^|[\s'’(-])\p{L}/gu, (m) => m.toUpperCase()) : s);
+const nice = orgName;
 const amdTop = r.amendements.slice(0, 25);
 
 ---
