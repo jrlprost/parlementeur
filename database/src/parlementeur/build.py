@@ -8,7 +8,7 @@ import shutil
 import duckdb
 import httpx
 
-from . import agenda, an, auditions, comptes_rendus, elections, hatvp, lobbying, wikidata
+from . import agenda, an, auditions, circo, comptes_rendus, elections, hatvp, interets, lobbying, proximite, wikidata
 import time
 from contextlib import contextmanager
 
@@ -146,6 +146,12 @@ def main() -> None:
         pres_scores = read_json(ROOT / "curated" / "presidentielles.json")["resultats"]
     with step("Déclarations d'intérêts (HATVP)"):
         decl = hatvp.load_declarations(deputes)
+    with step("Intérêts : participations, sociétés détenues, délais de dépôt (HATVP)"):
+        slug_of = {d["id"]: d["slug"] for d in deputes}
+        interets_all = interets.load(deputes, decl, slug_of)
+        delais = interets.delais(deputes)
+    with step("Code postal → circonscription (ministère de l'Intérieur, La Poste)"):
+        communes = circo.load(deputes)
     with step("Législatives 2024 (ministère de l'Intérieur)"):
         leg = elections.load(deputes)
     with step("Répertoire des représentants d'intérêts (HATVP)"):
@@ -265,6 +271,10 @@ def main() -> None:
             "anneeRevenus": dec["anneeRevenus"] if dec else None,
             "urlAN": d["urlAN"],
             "urlHATVP": dec["urlDossier"] if dec else None,
+            "participationsTotal": interets_all["deputes"].get(d["id"], {}).get("total") if dec else None,
+            "participationsN": interets_all["deputes"].get(d["id"], {}).get("n") if dec else None,
+            "directions": dec.get("directions") if dec else None,
+            "delaiDeclaration": delais[d["id"]]["delai"],
             "debut": d["debut"],
         }
         out_deputes.append(public)
@@ -287,7 +297,7 @@ def main() -> None:
                 {"sigle": ref_to_sigle.get(h["ref"], "?"), "nom": names.get(h["ref"], ""), "debut": h["debut"], "fin": h["fin"]}
                 for h in vote_groups.get(d["id"], [])
             ],
-            "interets": {k: dec[k] for k in ("date", "url", "activites", "participations", "mandatsElectifs", "conjoint")} if dec else None,
+            "interets": {k: dec[k] for k in ("date", "url", "activites", "participations", "mandatsElectifs")} | {"depot": delais[d["id"]]["depot"], "modifications": delais[d["id"]]["modifications"]} if dec else None,
             "votesCles": votes_cles[:40],
             "dissidences": m.get("dissidences"),
             "amendements": {"deposes": public["amendements"], "adoptes": public["amendementsAdoptes"]},
@@ -334,7 +344,7 @@ def main() -> None:
     write_json(DIST / "scrutins.json", index)
     write_json(DIST / "lobbying.json", lobby)
     slug_by_id = {d["id"]: d["slug"] for d in deputes}
-    grp_sigle = {**{g["ref"]: g["sigle"] for g in groupes if g["ref"]}, **{k: v["sigle"] for k, v in an.load_all_groups().items()}}
+    grp_sigle = {**ref_to_sigle, **{g["ref"]: g["sigle"] for g in groupes if g["ref"]}}
     write_json(
         DIST / "rencontres.json",
         {
@@ -354,6 +364,11 @@ def main() -> None:
         },
     )
     write_json(DIST / "agenda.json", events)
+    write_json(DIST / "interets.json", {"societes": interets_all["societes"], "delaiLegal": interets_all["delaiLegal"], "source": hatvp.DECLARATIONS, "sourceLobby": lobbying.AGORA})
+    write_json(DIST / "communes.json", communes)
+    ordre = [g["sigle"] for g in groupes]
+    write_json(DIST / "proximite.json", {**proximite.accord_groupes(scrutins, groupes, ref_to_sigle), "carte": proximite.carte(scrutins, deputes, slug_by_id, ordre)})
+    proximite.votes_compacts(scrutins, deputes)
     # Travail par député et par mois : commissions (convocations, présences, minutes), jours de vote,
     # et minutes de séance publique où le député a voté ou siégé (durée réelle, suspensions déduites).
     from datetime import date as _date

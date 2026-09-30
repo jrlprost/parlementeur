@@ -54,7 +54,8 @@ def _kept(item) -> bool:
 
 def _txt(el, path) -> str | None:
     t = el.findtext(path)
-    t = (t or "").strip()
+    # La HATVP masque certaines mentions (adresses, noms de SCI) : « [Données non publiées] ».
+    t = re.sub(r"\s+", " ", re.sub(r"\[\s*DONN[ÉE]ES NON PUBLI[ÉE]ES\s*\]", " ", t or "", flags=re.I)).strip(" -–,;")
     return t or None
 
 
@@ -163,6 +164,7 @@ def _parse(el, depot: datetime) -> dict:
         "mandatsElectifs": [{k: m[k] for k in ("description", "montants")} for m in mandats],
         "participations": participations,
         "conjoint": "; ".join(c for c in conjoint if c) or None,
+        "directions": sum(1 for a in dirigeant if a["conservee"]),
         "revenusAnnexes": revenus,
         "anneeRevenus": annee,
     }
