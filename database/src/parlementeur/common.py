@@ -33,12 +33,19 @@ def fetch(url: str, name: str, max_age_h: float = 20) -> Path:
         return dest
     log(f"téléchargement {url}")
     tmp = dest.with_suffix(dest.suffix + ".part")
-    with httpx.stream("GET", url, follow_redirects=True, timeout=300, headers={"User-Agent": USER_AGENT}) as r:
-        r.raise_for_status()
-        with tmp.open("wb") as f:
-            for chunk in r.iter_bytes(1 << 20):
-                f.write(chunk)
-        last_modified = r.headers.get("last-modified")
+    try:
+        with httpx.stream("GET", url, follow_redirects=True, timeout=300, headers={"User-Agent": USER_AGENT}) as r:
+            r.raise_for_status()
+            with tmp.open("wb") as f:
+                for chunk in r.iter_bytes(1 << 20):
+                    f.write(chunk)
+            last_modified = r.headers.get("last-modified")
+    except httpx.HTTPError as e:
+        # Source momentanément indisponible : on garde la dernière copie plutôt que de tout interrompre.
+        if dest.exists():
+            log(f"échec ({e}) : copie locale du {datetime.fromtimestamp(dest.stat().st_mtime):%d/%m %H:%M} conservée")
+            return dest
+        raise
     tmp.replace(dest)
     (RAW / f"{name}.meta.json").write_text(json.dumps({"url": url, "fetchedAt": now_iso(), "lastModified": last_modified}))
     return dest
