@@ -109,6 +109,16 @@ export const VIEWS: View[] = [
     legende: ['0 €', '200 000 € et plus'],
     source: HATVP,
   },
+  {
+    id: 'participations',
+    label: 'Participations',
+    titre: 'Qui détient des parts de sociétés',
+    intro: "Valeur totale des participations dans des sociétés déclarées à la HATVP (actions, parts sociales), telle que chaque député l'a évaluée. Pâle = aucune participation déclarée.",
+    kind: 'rampe',
+    value: (d) => (d.participationsTotal == null ? null : d.participationsTotal <= 0 ? 0 : clamp(Math.log10(1 + d.participationsTotal / 100) / Math.log10(100001))),
+    legende: ['0 €', '10 M€ et plus'],
+    source: HATVP,
+  },
 ];
 
 export const viewById = (id: string) => VIEWS.find((v) => v.id === id) ?? VIEWS[0];

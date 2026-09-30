@@ -172,6 +172,17 @@ export function insights(view: string, ds: Depute[], gs: Groupe[]): Block[] {
         { kind: 'names', question: 'Ils ne déclarent aucun revenu annexe', answer: `${known.length - some.length} députés sur ${known.length} dont la déclaration est connue.`, names: known.filter((d) => d.revenusAnnexes === 0).map((d) => name(d)) },
       ];
     }
+    case 'participations': {
+      const known = ds.filter((d) => d.participationsTotal != null);
+      const some = known.filter((d) => d.participationsTotal! > 0);
+      const sw = groupSwarm(some, gs, (d) => d.participationsTotal!, fmtEur);
+      const kEur = (v: number) => (v >= 1e6 ? `${v / 1e6} M€` : v >= 1000 ? `${v / 1000} k€` : `${v} €`);
+      return [
+        { kind: 'svg', question: 'Combien valent leurs parts de sociétés ?', answer: `${some.length} députés sur ${known.length} déclarent des participations. La moitié d'entre eux les évaluent à moins de ${fmtEur(median(some.map((d) => d.participationsTotal!)) ?? 0)}.`, svg: swarm(sw, { min: 100, max: 3e7, ticks: [100, 1e4, 1e6], fmt: kEur, log: true }), note: `${TAP} Valeurs déclarées par les députés eux-mêmes. Sociétés détenues, lobbying et fonctions de direction : voir la page Intérêts déclarés.` },
+        { kind: 'bars', question: 'Qui en déclare, groupe par groupe ?', answer: 'Part des députés de chaque groupe qui déclarent au moins une participation.', rows: byGroup(known, gs, (m) => (m.length >= 3 ? m.filter((d) => d.participationsTotal! > 0).length / m.length : null), fmtPct), max: 1 },
+        { kind: 'names', question: 'Les dix plus grosses participations déclarées', answer: 'Valeur totale déclarée.', names: top(ds, (d) => d.participationsTotal ?? null, 10, 'desc', fmtEur) },
+      ];
+    }
   }
   return [];
 }

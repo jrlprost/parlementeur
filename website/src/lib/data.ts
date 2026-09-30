@@ -38,6 +38,11 @@ export type Depute = {
   place: string | null;
   urlAN: string;
   urlHATVP: string | null;
+  participationsTotal?: number | null;
+  participationsN?: number | null;
+  directions?: number | null;
+  /** Jours entre l'entrée en fonctions et le dépôt de la déclaration d'intérêts. */
+  delaiDeclaration?: number | null;
   /** Début du mandat en cours (date de prise de fonction). */
   debut: string;
 };
@@ -100,9 +105,10 @@ export type DeputeDetail = Depute & {
     date: string;
     url: string;
     activites: { description: string; employeur: string | null; montants: { annee: number; montant: number }[] }[];
-    participations: { societe: string; evaluation: number | null; parts: string | null }[];
+    participations: { societe: string; evaluation: number | null; parts: string | null; identifiable?: boolean; lobby?: { nom: string; actions: number; domaines: string[]; fiche: string } }[];
     mandatsElectifs: { description: string; montants: { annee: number; montant: number }[] }[];
-    conjoint: string | null;
+    depot: string | null;
+    modifications: number;
   } | null;
   votesCles: { numero: number; date: string; titre: string; vote: VoteCode; ligneGroupe: VoteCode | null }[];
   dissidences: number | null;

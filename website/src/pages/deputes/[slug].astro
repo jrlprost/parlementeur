@@ -2,7 +2,8 @@
 import Base from '../../layouts/Base.astro';
 import HemicycleStatic from '../../components/HemicycleStatic.astro';
 import { load, readOptional, fmtDate, fmtEur, fmtPct, fmtInt, type DeputeDetail, type Depute } from '../../lib/data';
-import { strip } from '../../lib/charts';
+import { strip, mapPoints } from '../../lib/charts';
+import { plural, orgName } from '../../lib/text';
 import { median } from '../../lib/stats';
 
 export function getStaticPaths() {
@@ -43,11 +44,36 @@ const profile = metrics
     const phrase = below >= 0.5 ? `${m.more} ${Math.round(below * 100)} % des députés` : `${m.less} ${Math.round((1 - below - all.filter((v) => v === me).length / all.length) * 100)} % des députés`;
     // Accord au féminin pour les députées.
     const accord = d.femme ? phrase.replace(/\bprésent\b/g, 'présente').replace(/\bâgé\b/g, 'âgée') : phrase;
-    return { label: m.label, value: m.fmt(me), phrase: accord, svg: strip(all, me, m.ax, col, gmed ?? undefined) };
+    return { label: m.label, value: m.fmt(me), phrase: accord, svg: strip(all, me, m.ax, col, gmed ?? undefined).replace('role="img"', `role="img" aria-label="${m.label} : ${m.fmt(me)}, ${accord.replace(/"/g, '')}"`) };
   })
   .filter((p): p is NonNullable<typeof p> => p != null);
 const VOTE_LBL: Record<string, string> = { pour: 'Pour', contre: 'Contre', abstention: 'Abstention', absent: 'Absent' };
 const lastAmount = (m: { annee: number; montant: number }[]) => [...m].sort((a, b) => b.annee - a.annee)[0];
+// Position sur la carte des votes (analyse des votes de tous les députés).
+const prox = readOptional<{ carte: { points: Record<string, [number, number]>; variance: [number, number] } }>('proximite.json');
+const gcolor = new Map(groupes.map((x) => [x.sigle, x.couleur]));
+const bySlug = new Map(deputes.map((x) => [x.slug, x]));
+const miniMap = prox?.carte.points[d.slug]
+  ? mapPoints(
+      Object.entries(prox.carte.points).map(([s, [x, y]]) => {
+        const o = bySlug.get(s)!;
+        return { x, y, s, n: `${o.prenom} ${o.nom}`, g: o.groupe, c: gcolor.get(o.groupe) ?? '#999' };
+      }),
+      { highlight: d.slug, dim: true },
+    )
+  : null;
+const inter = det?.interets;
+const totalPart = d.participationsTotal ?? 0;
+const sections = [
+  ['chiffres', 'Chiffres clés'],
+  ['profil', 'Profil'],
+  ['votes', 'Votes'],
+  ['interets', 'Intérêts'],
+  ...(det?.rencontres ? [['rencontres', 'Rencontres']] : []),
+  ...(det?.elections?.length ? [['election', 'Élection']] : []),
+  ['parcours', 'Parcours'],
+  ['sources', 'Sources'],
+];
 const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d.groupe}${d.circonscription ? ', ' + d.circonscription : ''}. Présence aux votes, discipline de groupe, intérêts déclarés, parcours.`;
 ---
 <Base title={nom} description={description} og={`/og/depute-${d.slug}.png`} section="deputes">
@@ -62,24 +88,37 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
       </div>
       {d.photo && <img class="photo" src={d.photo} alt={`Portrait officiel de ${nom}`} width="120" height="150" loading="lazy" />}
     </header>
+    <nav class="toc" aria-label="Sommaire de la fiche">
+      {sections.map(([id, l]) => <a href={`#${id}`}>{l}</a>)}
+      <a href={`/comparer/?a=${d.slug}`} class="cmp">Comparer ⇄</a>
+    </nav>
 
-    <section class="kpis">
-      <div><b class="num">{d.participation != null ? fmtPct(d.participation) : '–'}</b><span>des scrutins votés</span></div>
-      <div><b class="num">{d.loyaute != null ? fmtPct(d.loyaute) : '–'}</b><span>de votes alignés sur son groupe</span></div>
-      <div><b class="num">{d.legislatures ?? '–'}</b><span>{d.legislatures === 1 ? 'premier mandat' : 'législatures effectuées'}</span></div>
-      <div><b class="num">{d.revenusAnnexes != null ? fmtEur(d.revenusAnnexes) : '–'}</b><span>de revenus annexes déclarés{d.anneeRevenus ? ` (${d.anneeRevenus})` : ''}</span></div>
-      <div><b class="num">{fmtInt(d.amendements)}</b><span>amendements déposés, dont {fmtInt(d.amendementsAdoptes)} adoptés</span></div>
-      <div><b class="num">{fmtInt(d.questions)}</b><span>questions écrites au gouvernement{det ? `, ${fmtInt(det.questionsRepondues)} avec réponse` : ''}</span></div>
-      <div><b class="num">{d.participationSolennels != null ? fmtPct(d.participationSolennels) : '–'}</b><span>des votes solennels</span></div>
-      <div><b class="num">{det?.dissidences != null ? fmtInt(det.dissidences) : '–'}</b><span>votes contre la ligne de son groupe</span></div>
-      <div><b class="num">{d.commissions?.convocations ? fmtPct(d.commissions.presents / d.commissions.convocations) : '–'}</b><span>de présence en commission ({fmtInt(d.commissions?.presents ?? 0)} réunions sur {fmtInt(d.commissions?.convocations ?? 0)}, {fmtInt(Math.round((d.commissions?.minutes ?? 0) / 60))} h)</span></div>
-      <div><b class="num">{fmtInt(d.joursVote ?? 0)}</b><span>jours où {d.femme ? 'elle' : 'il'} a voté en séance</span></div>
-      <div><b class="num">{d.partDelegation != null ? fmtPct(d.partDelegation) : '–'}</b><span>de ses votes confiés à un collègue (vote par délégation, en son absence)</span></div>
-      <div><b class="num">{fmtInt(d.interventions ?? 0)}</b><span>prises de parole en séance publique (hors présidence de séance)</span></div>
+    <section class="stack" style="--gap:14px" id="chiffres">
+      <h2 class="sr-only">Chiffres clés</h2>
+      <div class="kpis">
+        <div><b class="num">{d.participation != null ? fmtPct(d.participation) : '–'}</b><span>des scrutins votés en personne</span></div>
+        <div><b class="num">{d.loyaute != null ? fmtPct(d.loyaute) : '–'}</b><span>de votes alignés sur son groupe</span></div>
+        <div><b class="num">{fmtInt(d.amendements)}</b><span>{plural(d.amendements, 'amendement déposé', 'amendements déposés')}, dont {fmtInt(d.amendementsAdoptes)} {plural(d.amendementsAdoptes, 'adopté', 'adoptés')}</span></div>
+        <div><b class="num">{d.commissions?.convocations ? fmtPct(d.commissions.presents / d.commissions.convocations) : '–'}</b><span>de présence en commission</span></div>
+        <div><b class="num">{fmtInt(d.interventions ?? 0)}</b><span>{plural(d.interventions ?? 0, 'prise de parole', 'prises de parole')} en séance</span></div>
+        <div><b class="num">{fmtInt(d.questions)}</b><span>{plural(d.questions, 'question écrite', 'questions écrites')} au gouvernement</span></div>
+      </div>
+      <details class="more-kpis">
+        <summary>6 autres indicateurs</summary>
+        <div class="kpis">
+          <div><b class="num">{d.participationSolennels != null ? fmtPct(d.participationSolennels) : '–'}</b><span>des votes solennels</span></div>
+          <div><b class="num">{det?.dissidences != null ? fmtInt(det.dissidences) : '–'}</b><span>votes contre la ligne de son groupe</span></div>
+          <div><b class="num">{d.partDelegation != null ? fmtPct(d.partDelegation) : '–'}</b><span>de ses votes confiés à un collègue (vote par délégation, en son absence)</span></div>
+          <div><b class="num">{fmtInt(d.joursVote ?? 0)}</b><span>jours où {d.femme ? 'elle' : 'il'} a voté en séance</span></div>
+          <div><b class="num">{d.legislatures ?? '–'}</b><span>{d.legislatures === 1 ? 'premier mandat' : 'législatures effectuées'}</span></div>
+          <div><b class="num">{d.revenusAnnexes != null ? fmtEur(d.revenusAnnexes) : '–'}</b><span>de revenus annexes déclarés{d.anneeRevenus ? ` (${d.anneeRevenus})` : ''}</span></div>
+        </div>
+        <p class="small muted">Commissions : {fmtInt(d.commissions?.presents ?? 0)} réunions sur {fmtInt(d.commissions?.convocations ?? 0)}, soit {fmtInt(Math.round((d.commissions?.minutes ?? 0) / 60))} h. Prises de parole hors présidence de séance.</p>
+      </details>
     </section>
     {d.fonction && <p class="muted">{d.fonction}{d.fonction.startsWith('Présidente') || d.fonction.startsWith('Président') ? " : préside les séances et ne prend pas part aux votes, d'où l'absence de taux de présence." : '.'}</p>}
 
-    <section class="stack" style="--gap:14px">
+    <section class="stack" style="--gap:14px" id="profil">
       <h2>Son profil parmi les {deputes.length} députés</h2>
       <p class="muted small">Chaque point gris est un député. Le grand point, c'est {nom} ; le trait, la médiane de son groupe ({d.groupe}).</p>
       <div class="profile">
@@ -93,7 +132,15 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
       </div>
     </section>
 
-    <section class="stack" style="--gap:12px">
+    <section class="stack" style="--gap:12px" id="votes">
+      {miniMap && (
+        <div class="stack" style="--gap:8px">
+          <h2>Avec qui vote-t-{d.femme ? 'elle' : 'il'} ?</h2>
+          <p class="muted small">Chaque point est un député, placé selon ses votes : plus deux points sont proches, plus ces députés votent souvent de la même façon. {nom} est le point cerclé.</p>
+          <figure class="minimap"><Fragment set:html={miniMap} /></figure>
+          <p class="small"><a href="/qui-vote-avec-qui/">Explorer la carte des votes</a> · <a href={`/comparer/?a=${d.slug}`}>Comparer {d.femme ? 'cette députée' : 'ce député'} avec un autre</a></p>
+        </div>
+      )}
       <h2>Sa place dans l'hémicycle</h2>
       <HemicycleStatic fills={fills} slugs={deputes.map((x) => x.slug)} highlight={idx} label={`Position de ${nom} dans l'hémicycle`} />
       <p class="src">Source : <a href={d.urlAN}>fiche officielle de l'Assemblée nationale</a>.</p>
@@ -128,11 +175,16 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
       </section>
     ) : null}
 
-    <section class="stack" style="--gap:12px">
+    <section class="stack" style="--gap:12px" id="interets">
       <h2>Intérêts et activités déclarés</h2>
-      {det?.interets ? (
+      {inter ? (
         <div class="stack" style="--gap:16px">
-          <p class="muted">Déclaration d'intérêts et d'activités déposée auprès de la HATVP le {fmtDate(det.interets.date)}.</p>
+          <ul class="facts">
+            <li><b class="num">{fmtInt(d.participationsN ?? 0)}</b> {plural(d.participationsN ?? 0, 'participation financière déclarée', 'participations financières déclarées')}{totalPart > 0 ? <>, pour une valeur totale déclarée de <b class="num">{fmtEur(totalPart)}</b></> : ''}</li>
+            <li><b class="num">{fmtInt(d.directions ?? 0)}</b> {plural(d.directions ?? 0, 'fonction de direction conservée', 'fonctions de direction conservées')} pendant le mandat (entreprise, association, organisme)</li>
+            {d.delaiDeclaration != null && <li>Déclaration déposée <b class="num">{fmtInt(d.delaiDeclaration)} jours</b> après son entrée en fonctions{d.delaiDeclaration > 61 ? ' (délai légal : deux mois)' : ', dans le délai légal de deux mois'}{inter.modifications ? `, puis modifiée ${inter.modifications} fois` : ''}</li>}
+          </ul>
+          <p class="muted small">Dernière déclaration d'intérêts et d'activités déposée auprès de la HATVP le {fmtDate(inter.date)}. <a href="/interets/">Comparer avec les autres députés</a>.</p>
           {det.interets.activites.length > 0 && (
             <table class="tbl">
               <caption class="sr-only">Activités professionnelles déclarées</caption>
@@ -150,12 +202,11 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
               <thead><tr><th>Participation au capital d'une société</th><th class="r">Évaluation déclarée</th></tr></thead>
               <tbody>
                 {det.interets.participations.map((p) => (
-                  <tr><td>{p.societe}{p.parts ? <span class="muted"> · {p.parts}</span> : null}</td><td class="r num">{p.evaluation != null ? fmtEur(p.evaluation) : '–'}</td></tr>
+                  <tr><td>{orgName(p.societe)}{p.parts ? <span class="muted"> · {p.parts}</span> : null}{p.lobby && <span class="lobline"><span class="lob">lobby</span> <a href={p.lobby.fiche}>{orgName(p.lobby.nom)}</a> a déclaré {p.lobby.actions} {plural(p.lobby.actions, 'action', 'actions')} auprès des parlementaires{p.lobby.domaines.length ? ` (${p.lobby.domaines.slice(0, 2).join(', ').toLowerCase()})` : ''}</span>}</td><td class="r num">{p.evaluation != null ? fmtEur(p.evaluation) : '–'}</td></tr>
                 ))}
               </tbody>
             </table>
           )}
-          {det.interets.conjoint && <p><span class="muted">Activité du conjoint déclarée :</span> {det.interets.conjoint}</p>}
           <p class="src">Source : <a href={det.interets.url}>déclaration publiée par la HATVP</a>. Le patrimoine des députés n'est consultable qu'en préfecture et sa publication est interdite (loi du 11 octobre 2013, article 26) : <a href="/methode/#patrimoine">pourquoi il n'apparaît pas ici</a>.</p>
         </div>
       ) : (
@@ -164,7 +215,7 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
     </section>
 
     {det?.elections?.length ? (
-      <section class="stack" style="--gap:12px">
+      <section class="stack" style="--gap:12px" id="election">
         <h2>Son élection</h2>
         {det.elections.map((e) => (
           <p>
@@ -188,7 +239,7 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
     ) : null}
 
     {det?.rencontres && (
-      <section class="stack" style="--gap:14px">
+      <section class="stack" style="--gap:14px" id="rencontres">
         <h2>Rencontres documentées</h2>
         <p class="muted small">Ce que les documents publics disent des organisations que {d.femme ? 'cette députée' : 'ce député'} a entendues. <a href="/rencontres/#methode">D'où viennent ces données</a>.</p>
         {det.rencontres.rapporteur.length > 0 && (
@@ -221,7 +272,7 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
       </section>
     )}
 
-    <section class="stack" style="--gap:12px">
+    <section class="stack" style="--gap:12px" id="parcours">
       <h2>Condamnations définitives</h2>
       {det?.condamnations?.length ? (
         <ul class="plain">
@@ -250,7 +301,7 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
       </section>
     )}
 
-    <section class="stack" style="--gap:8px">
+    <section class="stack" style="--gap:8px" id="sources">
       <h2>Sources</h2>
       <ul class="plain src">
         <li><a href={d.urlAN}>Fiche du député, Assemblée nationale</a></li>
@@ -263,6 +314,19 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
 </Base>
 
 <style>
+  .toc { position: sticky; top: 0; z-index: 12; background: var(--bg); display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-block: 8px; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); border-bottom: 1px solid var(--ink-8); }
+  .toc::-webkit-scrollbar { display: none; }
+  .toc a { flex: none; font-size: 0.88rem; text-decoration: none; border: 1px solid var(--ink-16); border-radius: 999px; padding: 9px 14px; white-space: nowrap; }
+  .toc .cmp { font-weight: 600; }
+  @media (max-width: 760px) { .toc { top: 64px; } }
+  [id] { scroll-margin-top: 130px; }
+  .more-kpis { display: grid; gap: 12px; }
+  .more-kpis summary { min-height: 44px; display: flex; align-items: center; }
+  .facts { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .facts b { font-family: var(--serif); font-size: 1.25rem; }
+  .lobline { display: block; font-size: 0.82rem; color: var(--ink-62); margin-top: 2px; }
+  .minimap { margin: 0; max-width: 520px; }
+  .minimap :global(svg) { width: 100%; height: auto; display: block; }
   .head { display: flex; gap: 24px; justify-content: space-between; align-items: flex-start; }
   .photo { border-radius: 4px; width: 104px; height: auto; flex: none; filter: grayscale(0.15); }
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: 0; }
@@ -281,7 +345,7 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
   .votes { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
   .votes li { display: grid; grid-template-columns: 96px 1fr; gap: 2px 12px; align-items: baseline; }
   .votes li > .small { grid-column: 2; }
-  .vote { font-size: 0.8rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; text-align: center; color: #fff; }
+  .vote { font-size: 0.8rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; text-align: center; color: #0B0F14; }
   .v-pour { background: var(--vote-pour); }
   .v-contre { background: var(--vote-contre); }
   .v-abstention { background: var(--vote-abstention); }
@@ -291,6 +355,6 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
   .tbl td { border-bottom: 1px solid var(--ink-8); padding: 8px 0; vertical-align: top; }
   .tbl .r { text-align: right; padding-left: 16px; white-space: nowrap; }
   .h4 { font-size: 1.05rem; font-family: var(--sans); font-weight: 700; }
-  .lob { display: inline-block; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 0 6px; border-radius: 999px; background: var(--ramp-to); color: #fff; }
+  .lob { display: inline-block; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 0 6px; border-radius: 999px; border: 1.5px solid var(--ramp-to); color: var(--ink); }
   .plain { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
 </style>
