@@ -96,9 +96,12 @@
   .search-panel :global(.none) { padding: 10px; font-size: 0.88rem; color: var(--ink-62); }
   @media (max-width: 760px) {
     .search-toggle { display: grid; }
-    .search-box { display: none; position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; }
+    .search-toggle { width: 44px; height: 44px; }
+    /* Sur mobile, la recherche occupe toute la largeur sous l'en-tête, sans déborder de l'écran. */
+    .search-box { display: none; position: fixed; left: var(--gutter); right: var(--gutter); top: calc(env(safe-area-inset-top, 0px) + 64px); z-index: 30; }
     .search.open .search-box { display: block; }
-    #q-global, #q-global:focus { width: min(360px, calc(100vw - 32px)); }
-    .search-panel { position: static; margin-top: 6px; }
+    #q-global, #q-global:focus { width: 100%; font-size: 16px; padding: 12px 14px; }
+    .search-panel { position: static; width: 100%; margin-top: 6px; max-height: calc(100dvh - 200px); }
+    .search-panel :global(a) { padding: 10px; min-height: 44px; }
   }
 </style>

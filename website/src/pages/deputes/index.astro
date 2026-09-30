@@ -10,10 +10,15 @@ const gcol = new Map(groupes.map((g) => [g.sigle, g.couleur]));
     <header class="stack" style="--gap:12px">
       <p class="kicker">Assemblée nationale · {meta.legislature}<sup>e</sup> législature</p>
       <h1>Les {deputes.length} députés</h1>
-      <p class="lede">Cliquez sur une colonne pour trier. Chaque nom mène à une fiche détaillée et sourcée.</p>
+      <p class="lede">Touchez une colonne pour trier. Chaque nom mène à une fiche détaillée et sourcée.</p>
+      <p><a class="cta" href="/mon-depute/">Trouver mon député par code postal →</a></p>
     </header>
     <div class="tools">
-      <input id="filter" type="search" placeholder="Filtrer par nom, groupe ou département" autocomplete="off" />
+      <input id="filter" type="search" placeholder="Filtrer par nom ou département" autocomplete="off" />
+      <div class="chips" role="group" aria-label="Filtrer par groupe">
+        <button type="button" data-g="" aria-pressed="true">Tous</button>
+        {groupes.map((g) => <button type="button" data-g={g.sigle} aria-pressed="false" title={g.nom}><i class="dot" style={`background:${g.couleur}`}></i>{g.sigle}</button>)}
+      </div>
     </div>
     <div class="scroll">
       <table class="tbl" id="tbl">
@@ -43,6 +48,8 @@ const gcol = new Map(groupes.map((g) => [g.sigle, g.couleur]));
         </tbody>
       </table>
     </div>
+    <p class="count small muted" aria-live="polite"></p>
+    <button type="button" class="more" hidden>Afficher 100 députés de plus</button>
     <p class="src">Sources : <a href="https://data.assemblee-nationale.fr/">Assemblée nationale</a> (votes, mandats), <a href="https://www.hatvp.fr/open-data/">HATVP</a> (revenus annexes déclarés). <a href="/methode/">Méthode</a>.</p>
   </div>
 </Base>
@@ -70,21 +77,49 @@ const gcol = new Map(groupes.map((g) => [g.sigle, g.couleur]));
     });
   });
   const f = document.querySelector<HTMLInputElement>('#filter')!;
-  // Lien depuis la recherche : /deputes/?groupe=SOC
-  const g = new URLSearchParams(location.search).get('groupe');
-  if (g) rows.forEach((r) => (r.hidden = r.dataset.groupe !== g));
-  f.addEventListener('input', () => {
+  const more = document.querySelector<HTMLButtonElement>('.more')!;
+  const count = document.querySelector<HTMLElement>('.count')!;
+  // Sur mobile, 577 lignes font des dizaines d'écrans : on en montre 50, puis par paquets de 100.
+  let limit = 50;
+  let group = new URLSearchParams(location.search).get('groupe') ?? '';
+  function apply() {
     const q = f.value.trim().toLowerCase();
-    rows.forEach((r) => (r.hidden = !!q && !r.dataset.search!.includes(q)));
-  });
+    let shown = 0, match = 0;
+    for (const r of tbody.rows) {
+      const ok = (!group || r.dataset.groupe === group) && (!q || r.dataset.search!.includes(q));
+      if (ok) match++;
+      r.hidden = !ok || shown >= limit;
+      if (!r.hidden) shown++;
+    }
+    more.hidden = shown >= match;
+    count.textContent = `${shown} député${shown > 1 ? 's' : ''} affiché${shown > 1 ? 's' : ''} sur ${match}.`;
+    document.querySelectorAll<HTMLButtonElement>('.chips button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.g === group)));
+  }
+  f.addEventListener('input', () => { limit = 50; apply(); });
+  more.addEventListener('click', () => { limit += 100; apply(); });
+  document.querySelectorAll<HTMLButtonElement>('.chips button').forEach((b) => b.addEventListener('click', () => {
+    group = b.dataset.g!;
+    limit = 50;
+    history.replaceState(null, '', group ? `?groupe=${encodeURIComponent(group)}` : location.pathname);
+    apply();
+  }));
+  document.querySelectorAll('#tbl th button').forEach((b) => b.addEventListener('click', () => apply()));
+  apply();
 </script>
 
 <style>
+  .tools { display: grid; gap: 12px; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
+  .chips::-webkit-scrollbar { display: none; }
+  .chips button { flex: none; display: inline-flex; align-items: center; border: 1px solid var(--ink-16); background: var(--bg); border-radius: 999px; padding: 9px 13px; min-height: 44px; font-size: 0.88rem; }
+  .chips button[aria-pressed='true'] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .more { justify-self: start; border: 1px solid var(--ink-16); background: var(--bg); border-radius: 999px; padding: 10px 16px; min-height: 44px; font-weight: 600; }
+  .cta { font-weight: 600; }
   .tools input { font: inherit; padding: 10px 12px; border: 1px solid var(--ink-16); border-radius: 8px; background: var(--bg); color: var(--ink); width: 100%; max-width: 420px; }
   .scroll { overflow-x: auto; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
   .tbl { width: 100%; border-collapse: collapse; font-size: 0.92rem; min-width: 640px; }
   .tbl th { text-align: left; border-bottom: 1px solid var(--ink-16); padding: 0; }
-  .tbl th button { background: none; border: 0; padding: 8px 0; font-size: 0.8rem; font-weight: 600; color: var(--ink-62); width: 100%; text-align: inherit; }
+  .tbl th button { background: none; border: 0; padding: 12px 0; font-size: 0.8rem; font-weight: 600; color: var(--ink-62); width: 100%; text-align: inherit; }
   .tbl th[aria-sort] button { color: var(--ink); }
   .tbl th[aria-sort='ascending'] button::after { content: ' ↑'; }
   .tbl th[aria-sort='descending'] button::after { content: ' ↓'; }

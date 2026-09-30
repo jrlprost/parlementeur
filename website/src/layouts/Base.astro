@@ -16,12 +16,26 @@ const canonical = new URL(Astro.url.pathname, SITE.url).href;
 const ogUrl = new URL(og, SITE.url).href;
 const nav = [
   { href: '/', label: 'Assemblée', key: 'assemblee' },
+  { href: '/mon-depute/', label: 'Mon député', key: 'mon-depute' },
   { href: '/agenda/', label: 'Agenda', key: 'agenda' },
   { href: '/scrutins/', label: 'Scrutins', key: 'scrutins' },
   { href: '/deputes/', label: 'Députés', key: 'deputes' },
+  { href: '/qui-vote-avec-qui/', label: 'Qui vote avec qui', key: 'proximite' },
+  { href: '/interets/', label: 'Intérêts', key: 'interets' },
   { href: '/lobbying/', label: 'Lobbying', key: 'lobbying' },
   { href: '/histoire/', label: 'Depuis 1958', key: 'histoire' },
-  { href: '/methode/', label: 'Méthode', key: 'methode' },
+];
+// Rubriques rangées sous « Plus » dans la barre d'onglets mobile.
+const more = [
+  { href: '/mon-depute/', label: 'Trouver mon député', key: 'mon-depute' },
+  { href: '/qui-vote-avec-qui/', label: 'Qui vote avec qui', key: 'proximite' },
+  { href: '/comparer/', label: 'Comparer deux députés', key: 'comparer' },
+  { href: '/interets/', label: 'Intérêts déclarés', key: 'interets' },
+  { href: '/lobbying/', label: 'Lobbying', key: 'lobbying' },
+  { href: '/rencontres/', label: 'Qui a rencontré qui', key: 'rencontres' },
+  { href: '/histoire/', label: "L'hémicycle depuis 1958", key: 'histoire' },
+  { href: '/methode/', label: 'Méthode et sources', key: 'methode' },
+  { href: '/coulisses/', label: 'Coulisses du pipeline', key: 'coulisses' },
 ];
 ---
 <!doctype html>
@@ -67,13 +81,9 @@ const nav = [
       <a href="/scrutins/" aria-current={section === 'scrutins' ? 'page' : undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>Scrutins</a>
       <a href="/deputes/" aria-current={section === 'deputes' ? 'page' : undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 20a7 7 0 0 1 14 0" fill="none" stroke="currentColor" stroke-width="2"/></svg>Députés</a>
       <details class="more">
-        <summary aria-current={['lobbying', 'histoire', 'methode'].includes(section ?? '') ? 'page' : undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/></svg>Plus</summary>
+        <summary aria-current={more.some((m) => m.key === section) ? 'page' : undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/></svg>Plus</summary>
         <div class="sheet">
-          <a href="/lobbying/">Lobbying</a>
-          <a href="/rencontres/">Qui a rencontré qui</a>
-          <a href="/histoire/">L'hémicycle depuis 1958</a>
-          <a href="/methode/">Méthode et sources</a>
-          <a href="/coulisses/">Coulisses du pipeline</a>
+          {more.map((m) => <a href={m.href} aria-current={section === m.key ? 'page' : undefined}>{m.label}</a>)}
         </div>
       </details>
     </nav>
@@ -103,6 +113,17 @@ const nav = [
         try { localStorage.setItem('theme', next); } catch (e) {}
         document.dispatchEvent(new CustomEvent('themechange'));
       });
+      // « Voir plus » : dévoile les éléments masqués d'une liste raccourcie.
+      document.addEventListener('click', (e) => {
+        const b = (e.target as Element).closest<HTMLButtonElement>('button.showall[data-target]');
+        if (!b) return;
+        document.querySelectorAll<HTMLElement>(`${b.dataset.target} > [hidden]`).forEach((x) => (x.hidden = false));
+        b.remove();
+      });
+      // La feuille « Plus » se ferme au toucher en dehors, ou avec Échap.
+      const more = document.querySelector<HTMLDetailsElement>('.tabbar .more');
+      document.addEventListener('click', (e) => { if (more?.open && !more.contains(e.target as Node)) more.open = false; });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && more?.open) { more.open = false; more.querySelector('summary')?.focus(); } });
     </script>
     <style>
       .site-head {
@@ -113,6 +134,7 @@ const nav = [
       nav { display: flex; gap: 4px 18px; flex-wrap: wrap; flex: 1; font-size: 0.95rem; }
       nav a { text-decoration: none; color: var(--ink-62); padding-block: 4px; }
       nav a:hover, nav a[aria-current='page'] { color: var(--ink); text-decoration: underline; }
+      :global(.showall) { justify-self: start; border: 1px solid var(--ink-16); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 10px 16px; min-height: 44px; font-weight: 600; }
       .theme { background: none; border: 1px solid var(--ink-16); border-radius: 50%; width: 36px; height: 36px; display: grid; place-items: center; }
       .site-foot { margin-top: 80px; padding-bottom: 40px; }
       .foot-grid { display: grid; gap: 8px; padding-top: 20px; }
@@ -120,6 +142,7 @@ const nav = [
       @media (max-width: 760px) {
         .site-head { margin-bottom: 18px; padding-block: 10px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 25; background: var(--bg); }
         .site-head nav { display: none; }
+        .theme { width: 44px; height: 44px; }
         .site-head :global(.search) { margin-left: auto; }
         .tabbar {
           display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
@@ -130,8 +153,10 @@ const nav = [
         .tabbar summary::-webkit-details-marker { display: none; }
         .tabbar svg { width: 22px; height: 22px; }
         .tabbar [aria-current='page'] { color: var(--ink); font-weight: 700; }
-        .tabbar .sheet { position: absolute; right: 8px; bottom: calc(100% + 8px); background: var(--bg); border: 1px solid var(--ink-16); border-radius: 12px; padding: 6px; display: grid; min-width: 220px; box-shadow: 0 10px 30px color-mix(in srgb, var(--ink) 18%, transparent); }
-        .tabbar .sheet a { padding: 10px 12px; text-decoration: none; border-radius: 8px; }
+        .tabbar .sheet { position: absolute; right: 8px; bottom: calc(100% + 8px); background: var(--bg); border: 1px solid var(--ink-16); border-radius: 12px; padding: 6px; display: grid; min-width: 240px; max-height: 70vh; overflow: auto; box-shadow: 0 10px 30px color-mix(in srgb, var(--ink) 18%, transparent); }
+        .tabbar .sheet a { padding: 12px; text-decoration: none; border-radius: 8px; min-height: 44px; }
+        .tabbar .sheet a[aria-current='page'] { font-weight: 700; background: var(--ink-4); }
+        .tabbar .more[open] summary { color: var(--ink); }
         .tabbar .sheet a:hover { background: var(--ink-4); }
         .site-foot { padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
       }

@@ -35,6 +35,7 @@ function hoverValue(d: Depute): string | undefined {
     case 'amendements': return `${d.amendements} amendements déposés`;
     case 'anciennete': return d.legislatures != null ? `${d.legislatures} législature${d.legislatures > 1 ? 's' : ''}` : undefined;
     case 'revenus': return d.revenusAnnexes != null ? `Revenus annexes : ${fmtEur(d.revenusAnnexes)}` : undefined;
+    case 'participations': return d.participationsTotal != null ? `Participations : ${fmtEur(d.participationsTotal)}` : undefined;
     default: return undefined;
   }
 }
@@ -91,7 +92,7 @@ if (plan) {
           </button>
         </div>
       )}
-      <svg class="hemi" viewBox={`0 0 ${L.width.toFixed(0)} ${L.height.toFixed(0)}`} role="img" aria-label={`Hémicycle de ${deputes.length} sièges : ${v.titre}`}>
+      <svg class="hemi" viewBox={`0 0 ${L.width.toFixed(0)} ${L.height.toFixed(0)}`} role="application" tabindex="0" aria-roledescription="hémicycle" aria-label={`Hémicycle de ${deputes.length} sièges : ${v.titre}. Flèches gauche et droite pour parcourir les sièges, Entrée pour ouvrir la fiche.`}>
         {L.seats.map((s, i) => (
           <circle cx={s.x.toFixed(1)} cy={s.y.toFixed(1)} r={L.dot.toFixed(2)} data-i={i} data-s={deputes[i].slug} data-v={hoverValue(deputes[i])} style={`fill:${initial[i]}`} />
         ))}
@@ -119,6 +120,8 @@ if (plan) {
           </ul>
         )}
       </figcaption>
+      <p class="sr-live sr-only" aria-live="polite"></p>
+      <p class="hint small muted">Touchez un siège pour ouvrir la fiche du député. <a href="/deputes/">Liste complète des {deputes.length} députés</a></p>
     </figure>
 
     <aside class="panel" hidden aria-live="polite">
@@ -130,7 +133,7 @@ if (plan) {
   <div class="views" role="toolbar" aria-label="Thématique">
     <div class="seg">
       {VIEWS.map((vw) => (
-        <a href={vw.id === 'groupes' ? '/' : `/vue/${vw.id}/`} data-view={vw.id} aria-pressed={vw.id === v.id ? 'true' : 'false'}>{vw.label}</a>
+        <a href={vw.id === 'groupes' ? '/' : `/vue/${vw.id}/`} data-view={vw.id} aria-current={vw.id === v.id ? 'page' : undefined}>{vw.label}</a>
       ))}
     </div>
   </div>
@@ -186,7 +189,17 @@ if (plan) {
     }
     const svgEl = block.querySelector<SVGSVGElement>('svg.hemi')!;
     // Sur mobile, la thématique active est ramenée dans la zone visible de la barre.
-    block.querySelector('.views [aria-pressed="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+    const bar = block.querySelector<HTMLElement>('.views')!;
+    const cur = bar.querySelector<HTMLElement>('[aria-current="page"]');
+    if (cur) bar.scrollLeft = cur.offsetLeft - (bar.clientWidth - cur.offsetWidth) / 2;
+    // Indique qu'il reste des thématiques à faire défiler, à gauche ou à droite.
+    const edges = () => {
+      bar.classList.toggle('more-left', bar.scrollLeft > 4);
+      bar.classList.toggle('more-right', bar.scrollLeft + bar.clientWidth < bar.scrollWidth - 4);
+    };
+    bar.addEventListener('scroll', edges, { passive: true });
+    addEventListener('resize', edges);
+    edges();
     block.querySelectorAll<HTMLButtonElement>('.layout-toggle button').forEach((btn) =>
       btn.addEventListener('click', () => {
         const reel = btn.dataset.layout === 'reel';
@@ -199,9 +212,40 @@ if (plan) {
         });
       }),
     );
+    // Au doigt, un siège fait quelques pixels : on ouvre le siège le plus proche du point touché.
+    const centre = (i: number) => {
+      const c = circles[i];
+      const t = svgEl.classList.contains('reel') && data.real ? data.real[i] : [0, 0];
+      return [Number(c.getAttribute('cx')) + t[0], Number(c.getAttribute('cy')) + t[1]];
+    };
     svgEl.addEventListener('click', (e) => {
-      const c = (e.target as Element).closest('circle');
-      if (c) open(Number(c.getAttribute('data-i')));
+      const m = svgEl.getScreenCTM();
+      if (!m) return;
+      const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+      let best = -1, dist = Infinity;
+      circles.forEach((_, i) => {
+        const [x, y] = centre(i);
+        const d = (x - p.x) ** 2 + (y - p.y) ** 2;
+        if (d < dist) { dist = d; best = i; }
+      });
+      // Tolérance : environ 22 pixels à l'écran autour du point touché.
+      const tol = 22 / m.a;
+      if (best >= 0 && dist <= tol * tol) open(best);
+    });
+    // Clavier : flèches pour parcourir les sièges, Entrée pour ouvrir la fiche complète.
+    const live = block.querySelector<HTMLElement>('.sr-live')!;
+    let cursor = -1;
+    svgEl.addEventListener('keydown', (e) => {
+      if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+        e.preventDefault();
+        const step = e.key === 'ArrowUp' || e.key === 'ArrowDown' ? 10 : 1;
+        cursor = e.key === 'Home' ? 0 : e.key === 'End' ? circles.length - 1 : Math.max(0, Math.min(circles.length - 1, cursor + (e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -step : step)));
+        open(cursor, false);
+        const p = data.people[cursor];
+        live.textContent = `${p.n}, ${data.groupNames[p.g] ?? p.g}${p.c ? ', ' + p.c : ''}`;
+      } else if (e.key === 'Enter' && cursor >= 0) {
+        location.href = `/deputes/${data.people[cursor].s}/`;
+      }
     });
     panel.querySelector('.close')!.addEventListener('click', () => close());
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) close(); });
@@ -217,6 +261,12 @@ if (plan) {
   .views { view-transition-name: views; overflow-x: auto; display: flex; justify-content: safe center; position: sticky; top: 0; z-index: 15; background: var(--bg); padding-block: 8px; scrollbar-width: none; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
   .views .seg { flex-wrap: nowrap; white-space: nowrap; }
   .views::-webkit-scrollbar { display: none; }
+  .views.more-right { mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); }
+  .views.more-left { mask-image: linear-gradient(90deg, transparent, #000 40px); -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px); }
+  .views.more-left.more-right { mask-image: linear-gradient(90deg, transparent, #000 40px, #000 calc(100% - 40px), transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
+  .views .seg a { padding: 10px 14px; }
+  .hint { text-align: center; }
+  .hemi:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 8px; }
   @media (max-width: 760px) { .views { top: 56px; } }
   .hemi-grid { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); }
   .hemi-fig { margin: 0; display: grid; gap: 12px; justify-items: center; }
@@ -227,7 +277,7 @@ if (plan) {
   .hemi-total, .hemi-sub { transition: opacity .3s; }
   .hemi-fig { position: relative; }
   .layout-toggle { position: absolute; top: 0; right: 0; z-index: 2; display: flex; border: 1px solid var(--ink-16); border-radius: 8px; overflow: visible; background: var(--bg); }
-  .layout-toggle button { position: relative; background: none; border: 0; padding: 7px 9px; color: var(--ink-62); display: grid; place-items: center; }
+  .layout-toggle button { position: relative; background: none; border: 0; padding: 12px 11px; min-width: 44px; color: var(--ink-62); display: grid; place-items: center; }
   .layout-toggle button + button { border-left: 1px solid var(--ink-16); }
   .layout-toggle button[aria-pressed='true'] { background: var(--ink); color: var(--bg); }
   .layout-toggle button:first-child { border-radius: 7px 0 0 7px; }

@@ -89,7 +89,7 @@ const view = blocks.map((b) => {
 
       {b.kind === 'svg' && (
         <figure class="fig">
-          <Fragment set:html={b.svg} />
+          <Fragment set:html={b.svg.replace('role="img"', `role="img" aria-label="${b.question.replace(/"/g, '&quot;')}"`)} />
           {b.legend && <p class="plegend small">{b.legend.map((l: any) => <><i style={`background:${l.color}`}></i>{l.label} </>)}</p>}
           <p class="pick small" aria-live="polite"></p>
         </figure>
@@ -128,8 +128,20 @@ const view = blocks.map((b) => {
   for (const fig of document.querySelectorAll<HTMLElement>('.insights .fig')) {
     const out = fig.querySelector<HTMLElement>('.pick')!;
     let sel: Element | null = null;
-    fig.querySelector('svg')?.addEventListener('click', (e) => {
-      const el = (e.target as Element).closest('[data-s]');
+    const svg = fig.querySelector<SVGSVGElement>('svg');
+    const pts = svg ? [...svg.querySelectorAll<SVGGraphicsElement>('[data-s]')] : [];
+    svg?.addEventListener('click', (e) => {
+      // Les points font quelques pixels : on retient le plus proche du doigt, à 22 pixels près.
+      let el: Element | null = (e.target as Element).closest('[data-s]');
+      if (!el) {
+        let best = Infinity;
+        for (const p of pts) {
+          const r = p.getBoundingClientRect();
+          const d = (r.x + r.width / 2 - e.clientX) ** 2 + (r.y + r.height / 2 - e.clientY) ** 2;
+          if (d < best) { best = d; el = p; }
+        }
+        if (best > 22 * 22) el = null;
+      }
       if (!el) return;
       sel?.classList.remove('on');
       sel = el;
@@ -173,7 +185,7 @@ const view = blocks.map((b) => {
   .card h3 { font-size: 1.3rem; }
   .answer { color: var(--ink-80); }
   .bars { display: grid; gap: 4px; position: relative; }
-  .row summary, .row.static { display: grid; grid-template-columns: minmax(90px, 38%) 1fr auto; gap: 10px; align-items: center; font-size: 0.9rem; padding: 4px 0; list-style: none; }
+  .row summary, .row.static { display: grid; grid-template-columns: minmax(90px, 38%) 1fr auto; gap: 10px; align-items: center; font-size: 0.9rem; padding: 8px 0; list-style: none; }
   .row summary::-webkit-details-marker { display: none; }
   .row summary { cursor: pointer; border-radius: 4px; }
   .row summary:hover { background: var(--ink-4); }
@@ -200,12 +212,12 @@ const view = blocks.map((b) => {
   .ranked b { float: right; font-weight: 600; }
   .fig { margin: 0; display: grid; gap: 6px; }
   .fig :global(svg.chart) { width: 100%; height: auto; display: block; overflow: visible; }
-  .fig :global(.tk), .fig :global(.vl) { font-size: 9.5px; fill: var(--ink-62); font-family: var(--sans); }
-  .fig :global(.rl) { font-size: 10px; fill: var(--ink); font-weight: 600; font-family: var(--sans); }
-  .fig :global(.hd) { font-size: 11px; fill: var(--ink); font-weight: 600; font-family: var(--sans); }
-  .fig :global(.an) { font-size: 10px; fill: var(--ink); font-weight: 600; font-family: var(--sans); }
-  .fig :global(.qt) { font-size: 9.5px; fill: var(--ink-62); font-style: italic; font-family: var(--sans); }
-  .fig :global(.rt) { font-size: 9px; fill: var(--ink-62); font-family: var(--sans); }
+  .fig :global(.tk), .fig :global(.vl) { font-size: 11px; fill: var(--ink-62); font-family: var(--sans); }
+  .fig :global(.rl) { font-size: 11.5px; fill: var(--ink); font-weight: 600; font-family: var(--sans); }
+  .fig :global(.hd) { font-size: 12px; fill: var(--ink); font-weight: 600; font-family: var(--sans); }
+  .fig :global(.an) { font-size: 11px; fill: var(--ink); font-weight: 600; font-family: var(--sans); }
+  .fig :global(.qt) { font-size: 10.5px; fill: var(--ink-62); font-style: italic; font-family: var(--sans); }
+  .fig :global(.rt) { font-size: 10.5px; fill: var(--ink-62); font-family: var(--sans); }
   .fig :global(.grid) { stroke: var(--ink-8); stroke-width: 1; }
   .fig :global(.base) { stroke: var(--ink-16); stroke-width: 1; }
   .fig :global(.ref) { stroke: var(--ink-62); stroke-width: 1; stroke-dasharray: 3 3; }
@@ -219,7 +231,7 @@ const view = blocks.map((b) => {
   .pick :global(a) { font-weight: 600; }
   .coal { display: grid; gap: 12px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chips button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--ink-16); background: var(--bg); border-radius: 999px; padding: 6px 11px; font-size: 0.88rem; }
+  .chips button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--ink-16); background: var(--bg); border-radius: 999px; padding: 10px 13px; min-height: 44px; font-size: 0.88rem; }
   .chips button i { width: 10px; height: 10px; border-radius: 50%; }
   .chips button span { color: var(--ink-62); }
   .chips button[aria-pressed='true'] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); background: var(--ink-4); }
