@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import html
 import hashlib
 import json
 import re
@@ -222,7 +223,8 @@ def identical_amendments() -> list[dict]:
         a = json.loads(z.read(n))["amendement"]
         corps = (a.get("corps") or {}).get("contenuAuteur") or {}
         disp = val(corps.get("dispositif")) or ""
-        text = re.sub(r"<[^>]+>", " ", disp)
+        # Textes publiés en HTML avec entités (&#x00E9;) et accents décomposés (e + accent combinant).
+        text = unicodedata.normalize("NFC", html.unescape(re.sub(r"<[^>]+>", " ", disp)))
         key_text = _norm(re.sub(r"[^\w ]", " ", text))
         if len(key_text) < 60:
             continue
