@@ -1,0 +1,137 @@
+---
+import Base from '../../layouts/Base.astro';
+import { load } from '../../lib/data';
+import { communes } from '../../lib/communes';
+
+const { deputes, groupes } = load();
+const c = communes();
+const covered = new Set(Object.values(c?.cp ?? {}).flatMap((rows) => rows.flatMap((r) => r[1])));
+// Circonscriptions sans code postal : Français de l'étranger, certaines collectivités d'outre-mer.
+const others = deputes.filter((d) => !covered.has(d.slug)).sort((a, b) => (a.circonscription ?? '').localeCompare(b.circonscription ?? '', 'fr', { numeric: true }));
+const gcol = new Map(groupes.map((g) => [g.sigle, g.couleur]));
+---
+<Base title="Trouver mon député" description="Tapez votre code postal ou votre commune : Parlementeur vous montre votre député, ce qu'il vote, sa présence et ses intérêts déclarés." section="mon-depute">
+  <div class="stack" style="--gap:28px">
+    <header class="stack" style="--gap:12px">
+      <p class="kicker">Mon député</p>
+      <h1>Qui me représente à l'Assemblée ?</h1>
+      <p class="lede">Tapez votre code postal ou le nom de votre commune.</p>
+    </header>
+
+    <form class="finder" action="/mon-depute/" method="get" role="search" autocomplete="off">
+      <label for="md-q" class="sr-only">Code postal ou commune</label>
+      <input id="md-q" name="q" type="search" inputmode="search" enterkeyhint="search" placeholder="Ex. 45000 ou Orléans" autocomplete="off" />
+      <button type="submit">Trouver</button>
+    </form>
+    <ul class="suggest" id="md-suggest" role="listbox" aria-label="Communes proposées" hidden></ul>
+    <div id="md-out" aria-live="polite"></div>
+
+    <details class="others">
+      <summary>Français de l'étranger et collectivités sans code postal ({others.length} députés)</summary>
+      <ul class="plain">
+        {others.map((d) => <li><i class="dot" style={`background:${gcol.get(d.groupe)}`}></i><a href={`/deputes/${d.slug}/`}>{d.prenom} {d.nom}</a> <span class="muted small">{d.circonscription}</span></li>)}
+      </ul>
+    </details>
+
+    <section class="stack" style="--gap:8px">
+      <h2 class="h3">Comment ça marche</h2>
+      <p class="muted">Une commune peut être partagée entre plusieurs circonscriptions (grandes villes, arrondissements) : tous les députés concernés sont alors affichés, le plus représenté en premier. Le découpage vient des résultats officiels des législatives 2024 par bureau de vote ; les codes postaux, de la base officielle de La Poste.</p>
+      <p class="src">Sources : <a href={c?.sources[0]}>ministère de l'Intérieur, résultats par bureau de vote</a> · <a href={c?.sources[1]}>La Poste, base officielle des codes postaux</a>.</p>
+    </section>
+  </div>
+</Base>
+
+<script>
+  type Card = [string, string, string, string, string, number | null, number];
+  const q = document.querySelector<HTMLInputElement>('#md-q')!;
+  const form = document.querySelector<HTMLFormElement>('.finder')!;
+  const out = document.querySelector<HTMLElement>('#md-out')!;
+  const sug = document.querySelector<HTMLUListElement>('#md-suggest')!;
+  const cache = new Map<string, Promise<any>>();
+  const get = (u: string) => { if (!cache.has(u)) cache.set(u, fetch(u).then((r) => (r.ok ? r.json() : null))); return cache.get(u)!; };
+  const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[-'’]/g, ' ').replace(/\bsaint\b/g, 'st').replace(/\s+/g, ' ').trim();
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+  async function showCp(cp: string, only?: string) {
+    const [rows, cards] = await Promise.all([get(`/mon-depute/cp/${cp.slice(0, 2)}.json`), get('/cartes.json')]);
+    let list: [string, string[]][] = rows?.[cp] ?? [];
+    if (only) list = list.filter((r) => norm(r[0]) === norm(only));
+    if (!list.length) { out.innerHTML = `<p class="none">Aucune commune trouvée pour « ${esc(cp)} ». Vérifiez le code postal, ou tapez le nom de la commune.</p>`; return; }
+    const slugs = [...new Set(list.flatMap((r) => r[1]))];
+    const communes = list.map((r) => r[0]).join(', ');
+    out.innerHTML = `<p class="where"><b>${esc(cp)}</b> · ${esc(communes)}</p>` +
+      (slugs.length > 1 ? `<p class="muted small">Ce code postal couvre ${slugs.length} circonscriptions : votre député dépend de votre adresse exacte (bureau de vote).</p>` : '') +
+      `<ul class="cards">${slugs.map((s) => card(s, cards[s] as Card)).join('')}</ul>`;
+    history.replaceState(null, '', `?q=${encodeURIComponent(only ? `${only} ${cp}` : cp)}`);
+  }
+
+  function card(s: string, c: Card) {
+    const [n, g, gn, col, circo, age, ph] = c;
+    return `<li class="card"><a href="/deputes/${s}/">
+      ${ph ? `<img src="/photos/${s}.jpg" alt="" width="72" height="90" loading="lazy">` : '<span class="ph"></span>'}
+      <span class="t"><b>${esc(n)}</b><span><i class="dot" style="background:${col}"></i>${esc(gn)} (${esc(g)})</span><span class="muted">${esc(circo)}${age ? ` · ${age} ans` : ''}</span><span class="go">Ses votes, sa présence, ses intérêts →</span></span></a></li>`;
+  }
+
+  async function suggest() {
+    const v = q.value.trim();
+    sug.hidden = true;
+    if (/^\d{5}$/.test(v)) { showCp(v); return; }
+    if (/^\d/.test(v) || v.length < 2) return;
+    const l = norm(v).charAt(0);
+    const rows: [string, string][] | null = await get(`/mon-depute/communes/${l}.json`);
+    if (!rows) return;
+    const n = norm(v);
+    const hits = rows.filter(([name]) => norm(name).startsWith(n)).concat(rows.filter(([name]) => !norm(name).startsWith(n) && norm(name).includes(' ' + n))).slice(0, 8);
+    sug.innerHTML = hits.map(([name, cp]) => `<li><button type="button" data-cp="${cp}" data-n="${esc(name)}">${esc(name)} <span class="muted">${cp}</span></button></li>`).join('') || `<li class="none">Aucune commune ne commence par « ${esc(v)} ».</li>`;
+    sug.hidden = false;
+  }
+
+  let t: number | undefined;
+  q.addEventListener('input', () => { clearTimeout(t); t = window.setTimeout(suggest, 120); });
+  sug.addEventListener('click', (e) => {
+    const b = (e.target as Element).closest<HTMLButtonElement>('button[data-cp]');
+    if (!b) return;
+    sug.hidden = true;
+    q.value = b.dataset.n!;
+    showCp(b.dataset.cp!, b.dataset.n);
+  });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const first = sug.querySelector<HTMLButtonElement>('button[data-cp]');
+    if (/^\d{5}$/.test(q.value.trim())) showCp(q.value.trim());
+    else if (first) first.click();
+    else suggest();
+  });
+  // Lien partagé ou recherche depuis l'accueil : ?q=45000 ou ?q=Orléans 45000.
+  const initial = new URLSearchParams(location.search).get('q');
+  if (initial) {
+    q.value = initial;
+    const m = initial.match(/^(.*?)\s*(\d{5})$/);
+    if (m) showCp(m[2], m[1] || undefined);
+    else suggest();
+  } else q.focus();
+</script>
+
+<style>
+  .finder { display: flex; gap: 8px; max-width: 560px; }
+  .finder input { flex: 1; min-width: 0; font: inherit; font-size: 18px; padding: 14px 16px; border: 1.5px solid var(--ink-62); border-radius: 10px; background: var(--bg); color: var(--ink); }
+  .finder input:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
+  .finder button { font-weight: 700; padding: 0 18px; border-radius: 10px; border: 0; background: var(--ink); color: var(--bg); min-height: 52px; }
+  .suggest { list-style: none; margin: -16px 0 0; padding: 6px; max-width: 560px; border: 1px solid var(--ink-16); border-radius: 10px; }
+  .suggest button { width: 100%; text-align: left; background: none; border: 0; padding: 12px 10px; border-radius: 6px; min-height: 44px; }
+  .suggest button:hover, .suggest button:focus-visible { background: var(--ink-4); }
+  .suggest .none, #md-out :global(.none) { padding: 10px; color: var(--ink-62); }
+  #md-out { display: grid; gap: 10px; }
+  #md-out :global(.where) { font-size: 1.05rem; }
+  #md-out :global(.cards) { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+  #md-out :global(.card a) { display: flex; gap: 14px; align-items: center; padding: 14px; border: 1px solid var(--ink-16); border-radius: 12px; text-decoration: none; }
+  #md-out :global(.card a:hover) { border-color: var(--ink); }
+  #md-out :global(.card img), #md-out :global(.card .ph) { width: 72px; height: 90px; object-fit: cover; border-radius: 6px; flex: none; background: var(--ink-8); }
+  #md-out :global(.card .t) { display: grid; gap: 3px; min-width: 0; }
+  #md-out :global(.card b) { font-family: var(--serif); font-size: 1.35rem; line-height: 1.15; }
+  #md-out :global(.card .go) { font-weight: 600; font-size: 0.9rem; margin-top: 4px; }
+  :global(.dot) { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  .others summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+  .plain { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
+  .h3 { font-size: var(--step-2); }
+</style>
