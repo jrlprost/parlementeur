@@ -1,6 +1,6 @@
 # Parlementeur
 
-Ce que font vos élus, en chiffres et avec leurs sources : votes, présence, discipline de groupe, intérêts déclarés, parcours.
+Ce que font vos élus, en chiffres et avec leurs sources : votes, présence, loyauté envers le groupe, qui vote avec qui, intérêts déclarés, lobbying, parcours.
 
 Site : [parlementeur.fr](https://parlementeur.fr)
 
@@ -30,6 +30,8 @@ cd ../website && pnpm install && pnpm dev
 | [Assemblée nationale, open data](https://data.assemblee-nationale.fr/) | députés, mandats, groupes, scrutins | Licence Ouverte 2.0 |
 | [HATVP, open data](https://www.hatvp.fr/open-data/) | déclarations d'intérêts et d'activités | Licence Ouverte 2.0 |
 | [Wikidata](https://www.wikidata.org/) | mandats antérieurs à 2012 | CC0 |
+| [Ministère de l'Intérieur, législatives 2024](https://www.data.gouv.fr/datasets/elections-legislatives-des-30-juin-et-7-juillet-2024-resultats-definitifs-du-1er-tour) | résultats, découpage par bureau de vote | Licence Ouverte 2.0 |
+| [La Poste, base officielle des codes postaux](https://www.data.gouv.fr/datasets/base-officielle-des-codes-postaux) | code postal → commune | Licence Ouverte 2.0 |
 
 ## Licences
 

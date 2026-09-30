@@ -36,6 +36,20 @@ const sources = Object.values(meta.sources);
         <dd>Part des votes du député identiques à la position majoritaire de son groupe au moment du vote, telle que publiée par l'Assemblée. Calculée seulement pour les députés ayant au moins 20 votes comparables.</dd>
         <dt>Ancienneté</dt>
         <dd>Nombre de législatures de la Ve République auxquelles le député a siégé, d'après l'Assemblée nationale (depuis 2012) et Wikidata (avant 2012). La législature en cours compte.</dd>
+        <dt>Accord entre groupes</dt>
+        <dd>Part des scrutins où deux groupes ont pris la même position majoritaire (pour, contre ou abstention), telle que publiée par l'Assemblée, parmi ceux où les deux ont pris position. Les motions de censure sont exclues.</dd>
+        <dt>Carte des votes</dt>
+        <dd>Analyse en composantes principales des votes nominatifs (pour = +1, contre = −1, abstention = 0) sur les scrutins comptant au moins 30 votants. Les absences ne pèsent dans aucun sens. Deux députés proches sur la carte votent souvent de la même façon ; les axes n'ont pas de signification politique a priori.</dd>
+        <dt>Comparateur</dt>
+        <dd>Comparaison, scrutin par scrutin, des votes de deux députés sur les scrutins où tous deux ont voté (en personne ou par délégation).</dd>
+        <dt>Participations financières</dt>
+        <dd>Somme des évaluations de parts de sociétés déclarées par le député dans sa dernière déclaration d'intérêts, telles qu'il les a lui-même estimées. Les noms de sociétés civiles masqués par la HATVP comptent dans le total, pas dans le classement des sociétés.</dd>
+        <dt>Sociétés qui font du lobbying</dt>
+        <dd>Une société détenue est reliée au répertoire des représentants d'intérêts quand son nom y figure à l'identique, forme juridique mise à part. Seules comptent les actions déclarées auprès de parlementaires depuis juillet 2024.</dd>
+        <dt>Délai de déclaration</dt>
+        <dd>Nombre de jours entre l'entrée en fonctions et le dépôt de la première déclaration d'intérêts du mandat, selon la date enregistrée par la HATVP. Le délai légal est de deux mois (code électoral, article LO 135-1).</dd>
+        <dt>Mon député</dt>
+        <dd>Chaque bureau de vote des législatives 2024 est rattaché à sa circonscription (par sa liste de candidats, propre à chaque circonscription), puis chaque commune à ses circonscriptions, puis chaque code postal à ses communes (base officielle de La Poste).</dd>
         <dt>Revenus annexes</dt>
         <dd>Somme des rémunérations déclarées à la HATVP, pour l'année la plus récente renseignée, au titre des activités professionnelles conservées pendant le mandat, des activités de conseil, des fonctions de direction et des autres mandats électifs. L'indemnité de député n'est pas comptée. Les montants sont ceux déclarés par l'élu, sans correction.</dd>
       </dl>
@@ -44,7 +58,7 @@ const sources = Object.values(meta.sources);
     <section class="stack" id="patrimoine">
       <h2>Pourquoi le patrimoine des députés n'apparaît pas</h2>
       <p>Les députés déclarent leur patrimoine à la Haute Autorité pour la transparence de la vie publique, mais ces déclarations ne sont pas publiées en ligne. L'<a href="https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000032274253">article LO 135-2 du code électoral</a> les réserve « aux seules fins de consultation » des électeurs, à la préfecture du département d'élection du député. Et le III de l'article 26 de la <a href="https://www.legifrance.gouv.fr/loda/id/JORFTEXT000028056315">loi n° 2013-907 du 11 octobre 2013 relative à la transparence de la vie publique</a> punit « le fait de publier, hors les cas prévus par la présente loi, ou de divulguer, de quelque manière que ce soit, tout ou partie des déclarations » des députés des peines de l'article 226-1 du code pénal : un an d'emprisonnement et 45 000 € d'amende. Parlementeur ne lit donc jamais ces déclarations.</p>
-      <p>Nous publions à la place ce que la loi rend public : les déclarations d'intérêts et d'activités (revenus d'activités, participations au capital de sociétés, fonctions de direction, activité du conjoint). Les déclarations de patrimoine des membres du gouvernement, elles, sont publiques et seront intégrées avec la rubrique Gouvernement.</p>
+      <p>Nous publions à la place ce que la loi rend public : les déclarations d'intérêts et d'activités (revenus d'activités, participations au capital de sociétés, fonctions de direction). L'activité du conjoint, qui figure aussi dans ces déclarations, n'est pas reprise : le conjoint n'est pas un élu. Les déclarations de patrimoine des membres du gouvernement, elles, sont publiques et seront intégrées avec la rubrique Gouvernement.</p>
     </section>
 
     <section class="stack" id="condamnations">
