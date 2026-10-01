@@ -133,7 +133,7 @@ if (plan) {
   <div class="views" role="toolbar" aria-label="Thématique">
     <div class="seg">
       {VIEWS.map((vw) => (
-        <a href={vw.id === 'groupes' ? '/' : `/vue/${vw.id}/`} data-view={vw.id} aria-current={vw.id === v.id ? 'page' : undefined}>{vw.label}</a>
+        <a href={vw.id === 'groupes' ? '/assemblee/' : `/vue/${vw.id}/`} data-view={vw.id} aria-current={vw.id === v.id ? 'page' : undefined}>{vw.label}</a>
       ))}
     </div>
   </div>

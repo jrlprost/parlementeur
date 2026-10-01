@@ -12,18 +12,8 @@ const { deputes, groupes, meta } = load();
 const v = viewById(view);
 const og = `/og/vue-${v.id}.png`;
 ---
-<Base title={view === 'groupes' ? undefined : v.titre} description={v.intro} og={og} section="assemblee">
+<Base title={v.titre} description={v.intro} og={og} section="assemblee">
   <div class="stack" style="--gap:20px">
-    {view === 'groupes' && (
-      <section class="intro">
-        <p class="pitch">Ce que font vos 577 députés : leurs votes, leur présence, leurs intérêts. Chaque chiffre renvoie à sa source officielle.</p>
-        <form class="quick" action="/mon-depute/" method="get" role="search">
-          <label for="home-md" class="sr-only">Votre code postal ou votre commune</label>
-          <input id="home-md" name="q" type="search" enterkeyhint="search" placeholder="Code postal ou commune" autocomplete="off" />
-          <button type="submit">Mon député</button>
-        </form>
-      </section>
-    )}
     <p class="kicker center">Assemblée nationale · {meta.legislature}<sup>e</sup> législature · données au {fmtDate(meta.generatedAt)}</p>
     <Hemicycle deputes={deputes} groupes={groupes} view={v.id} />
     <header class="stack head" style="--gap:10px">
@@ -37,11 +27,6 @@ const og = `/og/vue-${v.id}.png`;
 
 <style>
   .center { text-align: center; }
-  .intro { display: grid; gap: 12px; justify-items: center; text-align: center; }
-  .pitch { font-family: var(--serif); font-size: var(--step-2); line-height: 1.25; max-width: 30ch; text-wrap: balance; }
-  .quick { display: flex; gap: 8px; width: 100%; max-width: 480px; }
-  .quick input { flex: 1; min-width: 0; font: inherit; font-size: 16px; padding: 12px 14px; border: 1.5px solid var(--ink-62); border-radius: 10px; background: var(--bg); color: var(--ink); }
-  .quick button { font-weight: 700; padding: 0 16px; border: 0; border-radius: 10px; background: var(--ink); color: var(--bg); min-height: 48px; white-space: nowrap; }
   .head { margin-top: 12px; border-top: 1px solid var(--ink-16); padding-top: 24px; }
   .head h1 { font-size: var(--step-3); }
 </style>
