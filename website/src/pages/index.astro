@@ -1,4 +1,218 @@
 ---
-import AssemblyPage from '../components/AssemblyPage.astro';
+import Base from '../layouts/Base.astro';
+import { load, readOptional, fmtInt, type ScrutinIndex } from '../lib/data';
+import { FAMILLES } from '../lib/familles';
+import { miniHemicycle, miniMap, miniVotes, miniHistory, miniWeek, icon } from '../lib/tiles';
+import type { Lobbying } from '../lib/lobbying';
+
+const { deputes, groupes, meta } = load();
+const gcol = new Map(groupes.map((g) => [g.sigle, g.couleur]));
+
+// Chiffres et mini-graphiques des tuiles, recalculés à chaque mise à jour des données.
+const scrutins = readOptional<ScrutinIndex[]>('scrutins.json') ?? [];
+const solennels = scrutins.filter((s) => s.solennel).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 14).reverse();
+const lobby = readOptional<Lobbying>('lobbying.json');
+const prox = readOptional<{ carte: { points: Record<string, [number, number]> } }>('proximite.json');
+const bySlug = new Map(deputes.map((d) => [d.slug, d]));
+const mapPts = Object.entries(prox?.carte.points ?? {}).map(([s, [x, y]]) => ({ x, y, c: gcol.get(bySlug.get(s)?.groupe ?? '') ?? '#999' }));
+const interets = readOptional<{ societes: unknown[] }>('interets.json');
+const rencontres = readOptional<{ rapports: { type: string }[]; commissions: unknown[] }>('rencontres.json');
+const nAuditions = (rencontres?.rapports.filter((r) => r.type !== 'contribution').length ?? 0) + (rencontres?.commissions.length ?? 0);
+
+type Leg = { numero: number; sieges: number; groupes: { sieges: number; famille: string }[] };
+const legs = readOptional<Leg[]>('legislatures.json') ?? [];
+const famColor = new Map(FAMILLES.map(([k, , c]) => [k, c]));
+const famOrder = new Map(FAMILLES.map(([k], i) => [k, i]));
+const history = legs.map((l) => {
+  const by = new Map<string, number>();
+  for (const g of l.groupes) by.set(g.famille, (by.get(g.famille) ?? 0) + g.sieges);
+  const tot = [...by.values()].reduce((a, b) => a + b, 0) || 1;
+  return [...by.entries()].sort((a, b) => (famOrder.get(a[0]) ?? 99) - (famOrder.get(b[0]) ?? 99)).map(([f, n]) => ({ color: famColor.get(f) ?? '#999', share: n / tot }));
+});
+
+// Agenda : la semaine de la prochaine séance publique.
+type Ev = { t: string; d: string };
+const agenda = readOptional<Ev[]>('agenda.json') ?? [];
+const now = meta.generatedAt.slice(0, 10);
+const next = agenda.filter((e) => e.t === 'seance' && e.d.slice(0, 10) >= now).sort((a, b) => a.d.localeCompare(b.d))[0];
+const monday = (() => { const d = new Date((next?.d ?? meta.generatedAt).slice(0, 10) + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d; })();
+const week = ['L', 'M', 'M', 'J', 'V'].map((label, i) => {
+  const day = new Date(monday.getTime() + i * 864e5).toISOString().slice(0, 10);
+  const evs = agenda.filter((e) => e.d.slice(0, 10) === day);
+  return { label, seance: evs.filter((e) => e.t === 'seance').length * 3, reunions: evs.filter((e) => e.t !== 'seance').length };
+});
+const nextLabel = next
+  ? `${new Date(next.d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' })} à ${parseInt(new Date(next.d).toLocaleTimeString('fr-FR', { hour: '2-digit', timeZone: 'Europe/Paris' }), 10)} h`
+  : null;
+
+type Tile = { href?: string; kicker: string; big?: string; line: string; size: 'big' | 'wide' | 'small'; visual: string; kind: 'data' | 'icon'; soon?: boolean };
+const tiles: Tile[] = [
+  { href: '/assemblee/', kicker: 'Assemblée nationale', big: fmtInt(deputes.length), line: 'députés, siège par siège', size: 'big', kind: 'data', visual: miniHemicycle(deputes.map((d) => gcol.get(d.groupe) ?? '#999')) },
+  { href: '/mon-depute/', kicker: 'Mon député', line: 'Votre député en un code postal', size: 'small', kind: 'icon', visual: icon('pin') },
+  { href: '/scrutins/', kicker: 'Scrutins', big: fmtInt(scrutins.length), line: 'votes à rejouer', size: 'small', kind: 'data', visual: miniVotes(solennels) },
+  { href: '/lobbying/', kicker: 'Lobbying', big: fmtInt(lobby?.actions ?? 0), line: "actions d'influence déclarées", size: 'small', kind: 'icon', visual: icon('handshake') },
+  { href: '/comparer/', kicker: 'Comparer', line: 'Deux élus, vote par vote', size: 'small', kind: 'icon', visual: icon('compare') },
+  { href: '/qui-vote-avec-qui/', kicker: 'Qui vote avec qui', line: 'La carte de tous les votes', size: 'wide', kind: 'data', visual: miniMap(mapPts) },
+  { href: '/interets/', kicker: 'Intérêts', big: fmtInt(interets?.societes.length ?? 0), line: 'sociétés détenues par des députés', size: 'small', kind: 'icon', visual: icon('briefcase') },
+  { href: '/agenda/', kicker: 'Agenda', line: nextLabel ? `Prochaine séance : ${nextLabel}` : "L'agenda de l'Assemblée", size: 'small', kind: 'data', visual: miniWeek(week) },
+  { href: '/rencontres/', kicker: 'Qui a rencontré qui', big: fmtInt(nAuditions), line: 'auditions documentées', size: 'small', kind: 'icon', visual: icon('network') },
+  { href: '/histoire/', kicker: 'Depuis 1958', big: String(legs.length), line: 'législatures de la Ve République', size: 'wide', kind: 'data', visual: miniHistory(history) },
+  { kicker: 'Gouvernement', line: 'Ministres, patrimoine, parcours', size: 'small', kind: 'icon', visual: icon('columns'), soon: true },
+  { kicker: 'Sénat', line: 'Les 348 sénateurs', size: 'small', kind: 'icon', visual: icon('arc'), soon: true },
+  { kicker: 'Parlement européen', line: 'Les 81 eurodéputés français', size: 'small', kind: 'icon', visual: icon('stars'), soon: true },
+  { href: '/methode/', kicker: 'Méthode', line: "D'où vient chaque chiffre", size: 'small', kind: 'icon', visual: icon('doc') },
+  { href: '/coulisses/', kicker: 'Données ouvertes', line: 'Le pipeline, en direct', size: 'small', kind: 'icon', visual: icon('pipeline') },
+];
 ---
-<AssemblyPage view="groupes" />
+<Base section="accueil" search={false}>
+  <div class="home">
+    <section class="hero">
+      <h1>Ce que font vos élus</h1>
+      <p class="sub">En chiffres, et chaque chiffre avec sa source.</p>
+      <form class="finder" action="/mon-depute/" method="get" role="search" autocomplete="off">
+        <label for="home-q" class="sr-only">Code postal, commune, élu ou scrutin</label>
+        <svg class="mag" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13 13l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <input id="home-q" name="q" type="search" enterkeyhint="search" placeholder="Code postal, commune, élu, scrutin…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="home-res" />
+        <div id="home-res" class="res" role="listbox" hidden></div>
+      </form>
+      <p class="ex">Essayez <a href="/mon-depute/?q=45000">45000</a>, <a href="/mon-depute/?q=Lyon">Lyon</a> ou un nom d'élu.</p>
+    </section>
+
+    <section class="bento" aria-label="Les outils de Parlementeur">
+      {tiles.map((t) => {
+        const Tag = t.soon ? 'div' : 'a';
+        return (
+          <Tag href={t.href} class={`tile s-${t.size} ${t.kind}${t.soon ? ' soon' : ''}`}>
+            <span class="txt">
+              <span class="k">{t.kicker}{t.soon && <span class="badge">Bientôt</span>}</span>
+              {t.big && <b class="big num">{t.big}</b>}
+              <span class="line">{t.line}</span>
+            </span>
+            <span class="vis" set:html={t.visual}></span>
+            {!t.soon && <span class="go" aria-hidden="true">→</span>}
+          </Tag>
+        );
+      })}
+    </section>
+  </div>
+</Base>
+
+<script>
+  // Une seule recherche : code postal ou commune → son député ; nom → fiche ; mot → scrutins, pages, lobbying.
+  type Row = [string, string, string, string];
+  const input = document.querySelector<HTMLInputElement>('#home-q')!;
+  const out = document.querySelector<HTMLElement>('#home-res')!;
+  const cache = new Map<string, Promise<any>>();
+  const get = (u: string) => { if (!cache.has(u)) cache.set(u, fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null)); return cache.get(u)!; };
+  const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[-'’]/g, ' ').replace(/\s+/g, ' ').trim();
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  const LIMIT: Record<string, number> = { Député: 5, Groupe: 2, Thématique: 2, Page: 3, Scrutin: 3, Lobbying: 3 };
+  const LABEL: Record<string, string> = { Député: 'Élus', Groupe: 'Groupes', Thématique: 'Thématiques', Page: 'Pages', Scrutin: 'Scrutins', Lobbying: 'Lobbying' };
+  let rows: Row[] | null = null, normed: string[] = [];
+  const ensure = async () => { if (!rows) { rows = (await get('/recherche.json')) ?? []; normed = rows!.map((r) => norm(r[1])); } };
+  input.addEventListener('focus', ensure, { once: true });
+  let seq = 0;
+
+  async function render() {
+    const v = input.value.trim();
+    const my = ++seq;
+    if (v.length < 2) { out.hidden = true; input.setAttribute('aria-expanded', 'false'); return; }
+    let html = '';
+    if (/^\d+$/.test(v)) {
+      if (v.length === 5) {
+        const cp = await get(`/mon-depute/cp/${v.slice(0, 2)}.json`);
+        const list: [string, string[]][] = cp?.[v] ?? [];
+        html = list.length
+          ? `<p class="sg">Votre député</p>` + list.slice(0, 5).map(([n]) => `<a role="option" href="/mon-depute/?q=${encodeURIComponent(n + ' ' + v)}"><b>${esc(n)}</b><span>${v}</span></a>`).join('')
+          : `<p class="none">Aucune commune pour le code postal ${esc(v)}.</p>`;
+      } else html = `<p class="none">Un code postal compte 5 chiffres.</p>`;
+    } else {
+      await ensure();
+      const n = norm(v);
+      const words = n.split(' ');
+      const communes: [string, string][] = (await get(`/mon-depute/communes/${n.charAt(0)}.json`)) ?? [];
+      const cHits = communes.filter(([c]) => norm(c).startsWith(n)).slice(0, 3);
+      const groups: Record<string, number[]> = {};
+      for (let i = 0; i < rows!.length; i++) {
+        const t = rows![i][0];
+        if ((groups[t]?.length ?? 0) >= (LIMIT[t] ?? 3)) continue;
+        if (words.every((w) => normed[i].includes(w))) (groups[t] ??= []).push(i);
+      }
+      html =
+        (cHits.length ? `<p class="sg">Communes</p>` + cHits.map(([c, cp]) => `<a role="option" href="/mon-depute/?q=${encodeURIComponent(c + ' ' + cp)}"><b>${esc(c)}</b><span>${cp} · voir son député</span></a>`).join('') : '') +
+        ['Député', 'Groupe', 'Thématique', 'Page', 'Lobbying', 'Scrutin'].filter((t) => groups[t]?.length).map((t) => `<p class="sg">${LABEL[t]}</p>` + groups[t].map((i) => `<a role="option" href="${rows![i][3]}"><b>${esc(rows![i][1])}</b>${rows![i][2] ? `<span>${esc(rows![i][2])}</span>` : ''}</a>`).join('')).join('');
+      if (!html) html = `<p class="none">Aucun résultat pour « ${esc(v)} ».</p>`;
+    }
+    if (my !== seq) return;
+    out.innerHTML = html;
+    out.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+  }
+  let t: number | undefined;
+  input.addEventListener('input', () => { clearTimeout(t); t = window.setTimeout(render, 120); });
+  input.closest('form')!.addEventListener('submit', (e) => {
+    const first = out.querySelector<HTMLAnchorElement>('a');
+    if (first && !out.hidden) { e.preventDefault(); location.href = first.href; }
+  });
+  document.addEventListener('click', (e) => { if (!input.closest('form')!.contains(e.target as Node)) out.hidden = true; });
+  input.addEventListener('keydown', (e) => { if (e.key === 'Escape') out.hidden = true; });
+</script>
+
+<style>
+  .home { display: grid; gap: 40px; }
+  .hero { display: grid; justify-items: center; text-align: center; gap: 14px; padding-top: 24px; }
+  .hero h1 { font-size: var(--step-4); }
+  .sub { color: var(--ink-62); font-size: var(--step-1); }
+  .finder { position: relative; width: 100%; max-width: 620px; margin-top: 8px; }
+  .finder input { width: 100%; font: inherit; font-size: 18px; padding: 16px 18px 16px 50px; border: 1.5px solid var(--ink-62); border-radius: 999px; background: var(--bg); color: var(--ink); box-shadow: 0 6px 24px color-mix(in srgb, var(--ink) 8%, transparent); }
+  .finder input:focus { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .mag { position: absolute; left: 18px; top: 50%; width: 20px; height: 20px; transform: translateY(-50%); color: var(--ink-62); pointer-events: none; }
+  .res { position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 20; text-align: left; background: var(--bg); border: 1px solid var(--ink-16); border-radius: 14px; padding: 6px; max-height: min(60vh, 460px); overflow: auto; box-shadow: 0 16px 40px color-mix(in srgb, var(--ink) 16%, transparent); }
+  .res :global(.sg) { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-62); font-weight: 600; padding: 8px 12px 2px; }
+  .res :global(a) { display: grid; gap: 1px; padding: 10px 12px; border-radius: 8px; text-decoration: none; min-height: 44px; }
+  .res :global(a b) { font-weight: 600; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .res :global(a span) { font-size: 0.82rem; color: var(--ink-62); }
+  .res :global(a:hover), .res :global(a:focus-visible) { background: var(--ink-4); }
+  .res :global(.none) { padding: 12px; color: var(--ink-62); }
+  .ex { font-size: 0.9rem; color: var(--ink-62); }
+
+  .bento { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 190px; grid-auto-flow: dense; gap: 14px; }
+  .tile { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; padding: 18px; border: 1px solid var(--ink-16); border-radius: 18px; background: var(--ink-4); text-decoration: none; overflow: hidden; transition: border-color .2s, transform .2s; }
+  a.tile:hover { border-color: var(--ink); transform: translateY(-2px); }
+  a.tile:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .s-big { grid-column: span 2; grid-row: span 2; }
+  .s-wide { grid-column: span 2; flex-direction: row; align-items: stretch; }
+  .s-wide .txt { flex: 0 0 38%; align-content: start; }
+  .s-wide .vis { flex: 1; padding-top: 22px; }
+  .txt { display: grid; gap: 2px; position: relative; z-index: 1; max-width: 85%; }
+  .k { font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; color: var(--ink-62); display: flex; gap: 8px; align-items: center; }
+  .big { font-family: var(--serif); font-weight: 600; font-size: 2.3rem; line-height: 1.05; }
+  .s-big .big { font-size: 3.6rem; }
+  .line { font-size: 0.95rem; line-height: 1.3; }
+  .vis { display: block; }
+  .vis :global(svg) { display: block; width: 100%; height: 100%; }
+  .data .vis { flex: 1; min-height: 0; }
+  .s-big .vis { padding: 6px 4% 0; }
+  .icon .vis { position: absolute; right: 12px; bottom: 10px; width: 74px; height: 74px; color: var(--ramp-to); opacity: 0.9; }
+  .go { position: absolute; right: 16px; top: 14px; font-size: 1.1rem; color: var(--ink-62); }
+  .soon { opacity: 0.62; background: transparent; border-style: dashed; }
+  .badge { font-size: 0.66rem; letter-spacing: 0.04em; border: 1px solid var(--ink-16); border-radius: 999px; padding: 1px 7px; color: var(--ink-62); }
+
+  @media (max-width: 900px) {
+    .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 168px; gap: 10px; }
+    .s-big { grid-row: span 2; }
+    .s-wide { flex-direction: column; }
+    .s-wide .txt { flex: none; }
+  }
+  @media (max-width: 760px) {
+    .hero { padding-top: 4px; gap: 10px; }
+    .finder input { font-size: 16px; padding: 14px 16px 14px 46px; }
+    .tile { padding: 14px; border-radius: 16px; }
+    .big { font-size: 1.9rem; }
+    .s-big .big { font-size: 2.8rem; }
+    .line { font-size: 0.88rem; }
+    .icon .vis { width: 56px; height: 56px; right: 10px; bottom: 8px; }
+    .txt { max-width: 100%; }
+    .icon .txt { max-width: 78%; }
+  }
+</style>
