@@ -403,7 +403,7 @@ def main() -> None:
         rows.sort(key=lambda r: r[0], reverse=True)
         write_json(DIST / "lobbying" / "registre" / f"{q}.json", rows)
     lobby["registre"] = sorted(by_q, reverse=True)
-    lobby["orgs"] = [[o["slug"], o["nom"], o["famille"], len(o["actions"]), o["nommes"]] for o in lobby_orgs]
+    lobby["orgs"] = [[o["slug"], o["nom"], o["famille"], len(o["actions"]), o["nommes"], o["depenseMin"]] for o in lobby_orgs]
     lobby["liens"] = {
         "auditions": sum(len(L["auditions"]) for L in links.values()),
         "commissions": sum(len(L["commissions"]) for L in links.values()),
