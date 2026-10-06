@@ -277,25 +277,39 @@ def registry_index(agora_json: Path) -> list[tuple[re.Pattern, str, bool]]:
     Les noms d'un seul mot doivent apparaître avec une majuscule dans le texte d'origine.
     """
     data = json.loads(agora_json.read_text("utf-8"))
-    out = []
-    seen = set()
+    # Chaque forme du nom → l'organisation la plus active qui la porte (une antenne locale porte
+    # parfois le sigle seul de sa fédération : « FNSEA » est le nom légal de la FNSEA de la Vienne).
+    best: dict[str, tuple[int, str, bool]] = {}
     for pub in data["publications"]:
         name = pub.get("denomination") or ""
-        n = re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", _norm(re.sub(r"\(.*?\)", "", name)))).strip()
-        core = re.sub(r"\s+", " ", re.sub(LEGAL, " ", n)).strip()
-        cands = {n} | ({core} if len(core.split()) >= 2 else set())
-        for cand in cands:
-            if len(cand) < 4 or cand in seen:
+        weight = sum(len((e.get("publicationCourante") or {}).get("activites") or []) for e in pub.get("exercices") or [])
+        usage_raw = pub.get("nomUsage") or ""
+        # « FNSEA - Fédération nationale… » : sigle et nom long sont deux formes du nom.
+        forms = [(name, False)] + [(part, True) for part in [usage_raw, *re.split(r"\s+[-–]\s+", usage_raw)] if part]
+        for raw, from_usage in forms:
+            n = re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", _norm(re.sub(r"\(.*?\)", "", raw)))).strip()
+            if not n:
                 continue
-            seen.add(cand)
-            single = len(cand.split()) == 1
-            if single:
-                # Mot seul : on exige la forme capitalisée dans le texte d'origine (Airbus, AIRBUS).
-                word = re.escape(cand)
-                # Pas collé à un trait d'union : « La Roche-sur-Yon » n'est pas l'entreprise Roche.
-                out.append((re.compile(r"(?<![-’'])\b(" + word.capitalize() + "|" + word.upper() + r")\b(?![-’'])"), name, True))
+            core = re.sub(r"\s+", " ", re.sub(LEGAL, " ", n)).strip()
+            for cand in {n} | ({core} if len(core.split()) >= 2 else set()):
+                if len(cand) < 4:
+                    continue
+                if cand not in best or weight > best[cand][0]:
+                    best[cand] = (weight, name, from_usage)
+    out = []
+    for cand, (_, name, from_usage) in best.items():
+        if len(cand.split()) == 1:
+            word = re.escape(cand)
+            # Sigle court (« UNIS », « Afep ») : la forme capitalisée seule est trop ambiguë (« Arabes Unis »).
+            if from_usage and len(cand) < 5:
+                # Sigle d'usage (« AFEP », « UNIS ») : en capitales, ou entre parenthèses (« (Afep) »).
+                out.append((re.compile(r"(?<![-’'])\b" + word.upper() + r"\b(?![-’'])|\(" + word.capitalize() + r"\)"), name, True))
             else:
-                out.append((re.compile(r"\b" + re.escape(cand) + r"\b"), name, False))
+                # Mot seul : forme capitalisée exigée (Airbus, AIRBUS), pas collée à un trait d'union
+                # (« La Roche-sur-Yon » n'est pas l'entreprise Roche).
+                out.append((re.compile(r"(?<![-’'])\b(" + word.capitalize() + "|" + word.upper() + r")\b(?![-’'])"), name, True))
+        else:
+            out.append((re.compile(r"\b" + re.escape(cand) + r"\b"), name, False))
     return out
 
 
@@ -328,6 +342,7 @@ def drop_generic(rows: list[dict], key: str = "registre", cap: int = 40) -> None
     from collections import Counter
 
     c = Counter(n for r in rows for n in r.get(key, []))
-    generic = {n for n, k in c.items() if k > cap}
+    # Seuls les noms d'un mot peuvent être des mots courants ; « Mouvement des entreprises de France » ne l'est pas.
+    generic = {n for n, k in c.items() if k > cap and len(re.sub(r"\(.*?\)", "", n).split()) == 1}
     for r in rows:
         r[key] = [n for n in r.get(key, []) if n not in generic]
