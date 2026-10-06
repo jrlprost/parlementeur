@@ -31,6 +31,7 @@ cd ../website && pnpm install && pnpm dev
 | [HATVP, open data](https://www.hatvp.fr/open-data/) | déclarations d'intérêts et d'activités | Licence Ouverte 2.0 |
 | [Wikidata](https://www.wikidata.org/) | mandats antérieurs à 2012 | CC0 |
 | [Ministère de l'Intérieur, législatives 2024](https://www.data.gouv.fr/datasets/elections-legislatives-des-30-juin-et-7-juillet-2024-resultats-definitifs-du-1er-tour) | résultats, découpage par bureau de vote | Licence Ouverte 2.0 |
+| [Agendas des ministres : Éducation nationale, Enseignement supérieur (data.gouv.fr), Culture (culture.gouv.fr)](https://www.data.gouv.fr/datasets/agenda-du-ministre-de-leducation-nationale-et-de-la-jeunesse) | rendez-vous des ministres | Licence Ouverte 2.0 |
 | [La Poste, base officielle des codes postaux](https://www.data.gouv.fr/datasets/base-officielle-des-codes-postaux) | code postal → commune | Licence Ouverte 2.0 |
 
 ## Licences
