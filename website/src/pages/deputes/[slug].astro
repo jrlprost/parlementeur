@@ -63,6 +63,8 @@ const miniMap = prox?.carte.points[d.slug]
     )
   : null;
 const inter = det?.interets;
+// Organisations du répertoire : nom légal → fiche Parlementeur.
+const orgSlug = readOptional<Record<string, string>>('lobbying/noms.json') ?? {};
 const totalPart = d.participationsTotal ?? 0;
 const sections = [
   ['chiffres', 'Chiffres clés'],
@@ -247,7 +249,7 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
             <h3 class="h4">Comme rapporteur{d.femme ? 'e' : ''} : {det.rencontres.rapporteur.length} auditions listées dans ses rapports</h3>
             <ul class="plain small">
               {det.rencontres.rapporteur.slice(0, 25).map((o) => (
-                <li>{(o.registre.length > 0 || o.etoile) && <span class="lob" title="Organisation inscrite au répertoire des représentants d'intérêts">lobby</span>} {o.organisation.slice(0, 160)}{o.registre.length > 0 && <span class="muted"> · répertoire HATVP : {o.registre.join(', ')}</span>} <a href={o.rapports[0].url}>rapport</a></li>
+                <li>{(o.registre.length > 0 || o.etoile) && <span class="lob" title="Organisation inscrite au répertoire des représentants d'intérêts">lobby</span>} {o.organisation.slice(0, 160)}{o.registre.length > 0 && <span class="muted"> · répertoire HATVP : {o.registre.map((n, i) => <>{i > 0 && ', '}{orgSlug[n] ? <a href={`/lobbying/${orgSlug[n]}/`}>{orgName(n)}</a> : orgName(n)}</>)}</span>} <a href={o.rapports[0].url}>rapport</a></li>
               ))}
             </ul>
             {det.rencontres.rapporteur.length > 25 && <p class="small muted">Et {det.rencontres.rapporteur.length - 25} autres, dans les annexes des rapports.</p>}
@@ -261,6 +263,14 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
             </ul>
           )}
         </div>
+        {(det.rencontres.ministres?.length ?? 0) > 0 && (
+          <div class="stack" style="--gap:6px">
+            <h3 class="h4">Reçu{d.femme ? 'e' : ''} par un ministre : {det.rencontres.ministres!.length} {det.rencontres.ministres!.length > 1 ? 'entretiens' : 'entretien'}</h3>
+            <ul class="plain small">
+              {det.rencontres.ministres!.map((m) => <li>{fmtDate(m.date)} · <b>{m.ministre}</b> : {m.texte} <a href={m.url}>source</a></li>)}
+            </ul>
+          </div>
+        )}
         {det.rencontres.amendementsTotal > 0 && (
           <div class="stack" style="--gap:6px">
             <h3 class="h4">{det.rencontres.amendementsTotal} amendements au texte identique à ceux d'autres groupes</h3>
@@ -349,7 +359,7 @@ const description = `${nom}, ${d.femme ? 'députée' : 'député'} ${g?.nom ?? d
   .v-pour { background: var(--vote-pour); }
   .v-contre { background: var(--vote-contre); }
   .v-abstention { background: var(--vote-abstention); }
-  .v-absent { background: var(--ink-8); color: var(--ink-62); }
+  .v-absent { background: var(--ink-8); color: var(--ink-80); }
   .tbl { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
   .tbl th { text-align: left; font-weight: 600; font-size: 0.8rem; color: var(--ink-62); border-bottom: 1px solid var(--ink-16); padding: 6px 0; }
   .tbl td { border-bottom: 1px solid var(--ink-8); padding: 8px 0; vertical-align: top; }

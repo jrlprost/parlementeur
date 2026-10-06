@@ -122,6 +122,7 @@ export type DeputeDetail = Depute & {
     commissions: { total: number; avecLobby: { date: string; organe: string; texte: string; registre: string[] }[] };
     amendements: { texte: string; n: number; groupes: number; exemple: string }[];
     amendementsTotal: number;
+    ministres?: { date: string; ministre: string; ministere: string; texte: string; url: string }[];
   };
 };
 
