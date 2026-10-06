@@ -155,7 +155,7 @@ const sections = [['vises', 'Qui est visé'], ['ministeres', 'Ministères'], ['s
         <summary>Quels agendas ministériels sont couverts ?</summary>
         <ul class="plain small">
           {agendaSrc.map((s) => <li><a href={s.url}>{s.label}</a> : {fmtInt(s.records)} événements{s.dernier ? `, jusqu'au ${fmtDate(s.dernier)}` : ''}.</li>)}
-          <li>Les autres ministères (Économie, Intérieur, Écologie, Agriculture, Armées, Santé, Travail…) publient leur agenda dans des formats disparates : ils seront ajoutés un par un. Certains sites ne conservent que les semaines récentes.</li>
+          <li>Pas encore couverts : Intérieur, Agriculture, Armées, Justice, Santé et Travail, dont les agendas sont publiés dans des formats non lisibles automatiquement (PDF image, pages dynamiques). Bercy ne conserve que les semaines récentes : son historique se constitue chaque nuit.</li>
         </ul>
       </details>
     </section>
