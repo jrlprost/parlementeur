@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import { SITE } from '../lib/site';
+import { load } from '../lib/data';
 import Search from '../components/Search.astro';
 import HoverCard from '../components/HoverCard.astro';
 
@@ -15,7 +16,9 @@ interface Props {
 const { title, description = SITE.description, og = '/og/accueil.png', section, search = true } = Astro.props;
 const fullTitle = title ? `${title} · ${SITE.name}` : `${SITE.name} · ce que font vos élus, en chiffres`;
 const canonical = new URL(Astro.url.pathname, SITE.url).href;
-const ogUrl = new URL(og, SITE.url).href;
+// Les réseaux sociaux gardent une image en cache par adresse : la date des données en fait une adresse neuve à chaque mise à jour.
+const ogBase = new URL(og, SITE.url).href;
+const ogUrl = ogBase.includes('?') ? ogBase : `${ogBase}?v=${load().meta.generatedAt.slice(0, 10).replace(/-/g, '')}`;
 const nav = [
   { href: '/assemblee/', label: 'Assemblée', key: 'assemblee' },
   { href: '/mon-depute/', label: 'Mon député', key: 'mon-depute' },
