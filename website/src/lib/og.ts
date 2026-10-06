@@ -62,6 +62,20 @@ export function hemicycleSvg(fills: string[], x: number, y: number, width: numbe
   return { svg: dots.join(''), height: L.height * k };
 }
 
+/** Barres horizontales étiquetées : libellé au-dessus, barre, valeur au bout. */
+export function hbars(items: { label: string; value: number; display: string; color?: string }[], x: number, y: number, w: number, rowH = 54) {
+  const max = Math.max(...items.map((i) => i.value), 1);
+  return items
+    .map((it, i) => {
+      const yy = y + i * rowH;
+      const bw = Math.max(3, (it.value / max) * (w - 90));
+      return `<text x="${x}" y="${yy}" font-family="Public Sans" font-weight="600" font-size="19" fill="${INK}">${esc(it.label)}</text>
+        <rect x="${x}" y="${yy + 10}" width="${bw.toFixed(1)}" height="16" rx="3" fill="${it.color ?? INK}"/>
+        <text x="${(x + bw + 10).toFixed(1)}" y="${yy + 24}" font-family="Public Sans" font-size="17" fill="${ink(0.62)}">${esc(it.display)}</text>`;
+    })
+    .join('');
+}
+
 /** Cadre commun : fond, marque, pied avec source. */
 export function frame(inner: string, opts: { kicker: string; source: string }) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">

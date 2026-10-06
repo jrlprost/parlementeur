@@ -61,6 +61,10 @@ export function headline(viewId: string, deputes: Depute[], groupes: Groupe[]): 
       const k = deputes.filter((d) => (d.revenusAnnexes ?? 0) > 0).length;
       return { big: `${k}`, label: `députés déclarent des revenus en plus de leur mandat` };
     }
+    case 'participations': {
+      const k = deputes.filter((d) => (d.participationsTotal ?? 0) > 0).length;
+      return { big: `${k}`, label: `députés déclarent des parts dans des sociétés` };
+    }
     default: {
       const top = [...groupes].sort((a, b) => b.effectif - a.effectif)[0];
       return { big: `${groupes.length} groupes`, label: `pour ${n} sièges. Le plus nombreux : ${top.sigle}, ${top.effectif} sièges` };
