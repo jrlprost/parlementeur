@@ -12,7 +12,7 @@ interface Props {
   /** L'accueil a sa propre recherche, au centre : pas de doublon dans l'en-tête. */
   search?: boolean;
 }
-const { title, description = SITE.description, og = '/og/vue-groupes.png', section, search = true } = Astro.props;
+const { title, description = SITE.description, og = '/og/accueil.png', section, search = true } = Astro.props;
 const fullTitle = title ? `${title} · ${SITE.name}` : `${SITE.name} · ce que font vos élus, en chiffres`;
 const canonical = new URL(Astro.url.pathname, SITE.url).href;
 const ogUrl = new URL(og, SITE.url).href;

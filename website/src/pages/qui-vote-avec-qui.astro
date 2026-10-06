@@ -23,7 +23,7 @@ const pts = Object.entries(p.carte.points).map(([s, [x, y]]) => {
 });
 const pc = (x: number) => `${Math.round(x * 100)} %`;
 ---
-<Base title="Qui vote avec qui" description="Quels groupes votent ensemble à l'Assemblée, et quels députés votent comme qui : la carte de tous les votes de la législature." section="proximite">
+<Base title="Qui vote avec qui" description="Quels groupes votent ensemble à l'Assemblée, et quels députés votent comme qui : la carte de tous les votes de la législature." og="/og/qui-vote-avec-qui.png" section="proximite">
   <div class="stack" style="--gap:44px">
     <header class="stack" style="--gap:12px">
       <p class="kicker">Votes · {fmtInt(p.carte.scrutins)} scrutins publics analysés</p>

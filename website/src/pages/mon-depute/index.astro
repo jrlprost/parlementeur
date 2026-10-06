@@ -10,7 +10,7 @@ const covered = new Set(Object.values(c?.cp ?? {}).flatMap((rows) => rows.flatMa
 const others = deputes.filter((d) => !covered.has(d.slug)).sort((a, b) => (a.circonscription ?? '').localeCompare(b.circonscription ?? '', 'fr', { numeric: true }));
 const gcol = new Map(groupes.map((g) => [g.sigle, g.couleur]));
 ---
-<Base title="Trouver mon député" description="Tapez votre code postal ou votre commune : Parlementeur vous montre votre député, ce qu'il vote, sa présence et ses intérêts déclarés." section="mon-depute">
+<Base title="Trouver mon député" description="Tapez votre code postal ou votre commune : Parlementeur vous montre votre député, ce qu'il vote, sa présence et ses intérêts déclarés." og="/og/mon-depute.png" section="mon-depute">
   <div class="stack" style="--gap:28px">
     <header class="stack" style="--gap:12px">
       <p class="kicker">Mon député</p>

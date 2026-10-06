@@ -43,7 +43,7 @@ const dirByGroup = groupes
 const topDir = [...declared].filter((d) => (d.directions ?? 0) > 0).sort((a, b) => b.directions! - a.directions!).slice(0, 10);
 const names = (slugs: string[]) => slugs.map(who).filter(Boolean);
 ---
-<Base title="Intérêts déclarés des députés" description="Participations financières, sociétés détenues, fonctions de direction, délais de déclaration : ce que les députés déclarent à la HATVP, et quand ces sociétés font aussi du lobbying." section="interets">
+<Base title="Intérêts déclarés des députés" description="Participations financières, sociétés détenues, fonctions de direction, délais de déclaration : ce que les députés déclarent à la HATVP, et quand ces sociétés font aussi du lobbying." og="/og/interets.png" section="interets">
   <div class="stack" style="--gap:48px">
     <header class="stack" style="--gap:12px">
       <p class="kicker">Intérêts déclarés · HATVP</p>

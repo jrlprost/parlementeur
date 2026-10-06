@@ -3,7 +3,7 @@
 const SMALL = new Set(['de', 'des', 'du', 'la', 'le', 'les', 'et', 'en', 'au', 'aux', 'pour', 'sur', 'par', 'a', 'à', 'dans', 'sous', 'ou', 'un', 'une', "d'", "l'"]);
 
 // Mots courts qui ne sont pas des sigles.
-const WORDS = new Set(['que', 'qui', 'nos', 'vos', 'ses', 'mon', 'ton', 'son', 'bio', 'art', 'eau', 'air', 'vie', 'sol', 'mer']);
+const WORDS = new Set(['pas', 'que', 'qui', 'nos', 'vos', 'ses', 'mon', 'ton', 'son', 'bio', 'art', 'eau', 'air', 'vie', 'sol', 'mer']);
 const isSigle = (w: string) => w.length <= 3 && !SMALL.has(w.toLowerCase()) && !WORDS.has(w.toLowerCase());
 
 const KNOWN: Record<string, string> = { TOTALENERGIES: 'TotalEnergies', LOREAL: "L'Oréal", "L'OREAL": "L'Oréal", BNP: 'BNP' };

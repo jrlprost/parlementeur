@@ -50,7 +50,7 @@ const sections = [['vises', 'Qui ils visent'], ['elus', 'Élus rencontrés'], ['
 const lastQuarter = series.length ? series[series.length - 1].n : 0;
 const desc = `${nom} : ${fmtInt(o.actions.length)} actions de lobbying déclarées depuis juillet 2024${inst.length ? `, surtout auprès du ${INST[inst[0][0]].toLowerCase()}` : ''}${nElus ? `. ${nElus} élus l'ont rencontrée nommément d'après les documents publics` : ''}.`;
 ---
-<Base title={`${nom}, lobbying`} description={desc} og="/og/lobbying.png" section="lobbying">
+<Base title={`${nom}, lobbying`} description={desc} og={`/og/lobbying/${o.slug}.png`} section="lobbying">
   <article class="stack" style="--gap:40px">
     <header class="stack" style="--gap:10px">
       <p class="kicker"><a href="/lobbying/">Lobbying</a> · {FAM[o.famille]}</p>
