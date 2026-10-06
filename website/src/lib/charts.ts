@@ -297,3 +297,39 @@ export function quarters(items: { t: string; n: number }[], H = 120): string {
     .join('');
   return `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="Actions déclarées par trimestre">${body}</svg>`;
 }
+
+/** Nuage d'organisations : actions déclarées (horizontal) et budget annuel déclaré (vertical), échelles logarithmiques. */
+export function orgScatter(pts: { s: string; n: string; actions: number; budget: number; color: string; fam: string; label: string }[], labels: string[]): string {
+  const W = 360, H = 300, L = 46, B = 28, T = 10, R = 10;
+  const lx = (v: number) => Math.log10(Math.max(v, 1));
+  // Seules les organisations à 10 actions ou plus sont placées : l'axe va de 10 à 1 000.
+  const x = (v: number) => L + ((lx(Math.max(v, 10)) - 1) / 2) * (W - L - R);
+  // Budget : de 10 k€ à 10 M€ ; les budgets inférieurs à 10 k€ (ou non déclarés) forment une bande en bas.
+  const y = (v: number) => (v < 10000 ? H - B - 6 : H - B - 26 - ((Math.log10(v) - 4) / 3) * (H - B - 26 - T));
+  const jitter = (s: string) => ((s.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 13) - 6) * 0.9;
+  const grid =
+    [10, 30, 100, 300, 1000].map((t) => `<line x1="${f1(x(t))}" x2="${f1(x(t))}" y1="${T}" y2="${H - B}" class="grid"/><text x="${f1(x(t))}" y="${H - 10}" text-anchor="${t === 1000 ? 'end' : t === 10 ? 'start' : 'middle'}" class="tk">${t === 1000 ? '1 000 actions' : t}</text>`).join('') +
+    [[1e4, '10 k€'], [1e5, '100 k€'], [1e6, '1 M€'], [1e7, '10 M€']].map(([v, l]) => `<line x1="${L}" x2="${W - R}" y1="${f1(y(v as number))}" y2="${f1(y(v as number))}" class="grid"/><text x="${L - 5}" y="${f1(y(v as number) + 3.5)}" text-anchor="end" class="tk">${l}</text>`).join('') +
+    `<text x="${L - 5}" y="${H - B - 2}" text-anchor="end" class="tk">moins</text>`;
+  const dots = pts
+    .map((p) => `<circle cx="${f1(x(p.actions) + jitter(p.s) * 0.3)}" cy="${f1(y(p.budget) + (p.budget < 10000 ? jitter(p.s) : jitter(p.s) * 0.4))}" r="2.7" fill="${p.color}" fill-opacity=".72" data-s="${p.s}" data-n="${esc(p.n)}" data-g="${esc(p.fam)}" data-v="${esc(p.label)}"/>`)
+    .join('');
+  // Étiquettes des organisations les plus marquantes, sans chevauchement.
+  const placed: { x0: number; x1: number; y: number }[] = [];
+  let lab = '';
+  for (const s of labels) {
+    const p = pts.find((q) => q.s === s);
+    if (!p) continue;
+    const px = x(p.actions), py = y(p.budget);
+    const right = px < W * 0.62;
+    const tx = right ? px + 6 : px - 6, ty = py - 5;
+    // Boîte approximative de l'étiquette (5,8 px par caractère à cette taille).
+    const w = p.n.length * 5.8;
+    const box = { x0: right ? tx : tx - w, x1: right ? tx + w : tx, y: ty };
+    if (placed.some((q) => Math.abs(q.y - box.y) < 13 && box.x0 < q.x1 + 4 && q.x0 < box.x1 + 4)) continue;
+    placed.push(box);
+    lab += `<text x="${f1(tx)}" y="${f1(ty)}" text-anchor="${right ? 'start' : 'end'}" class="an">${esc(p.n)}</text>`;
+  }
+  const ax = `<text x="${L + 4}" y="${T + 10}" class="qt">↑ plus gros budget</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart orgs" role="img" aria-label="Organisations selon leur nombre d'actions et leur budget de lobbying déclaré">${grid}${ax}${dots}${lab}</svg>`;
+}

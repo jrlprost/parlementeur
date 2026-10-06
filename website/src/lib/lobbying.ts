@@ -23,8 +23,8 @@ export type Lobbying = {
   gros: OrgTop[];
   beneficiaires: { nom: string; n: number; via: string[] }[];
   registre: string[];
-  /** [slug, nom, famille, actions, élus nommés] */
-  orgs: [string, string, string, number, number][];
+  /** [slug, nom, famille, actions, élus nommés, budget annuel déclaré (borne basse)] */
+  orgs: [string, string, string, number, number, number][];
   liens: { auditions: number; commissions: number; ministres: number; detenteurs: number; organisationsReliees: number };
   agendas: { sources: Record<string, { label: string; url: string; records: number; dernier?: string | null }>; rencontres: number; avecOrganisation: number; avecDepute: number };
   source: string;
@@ -81,6 +81,14 @@ export const INST_COLORS: Record<string, string> = {
   administration: '#1B8A8C',
   autorites: '#C9A227',
   local: '#F08A24',
+};
+
+export const FAM_COLORS: Record<string, string> = {
+  entreprises: '#2A5DB8',
+  federations: 'var(--ramp-to)',
+  associations: '#3A9D4F',
+  cabinets: '#8F7CC4',
+  autres: '#9A9A9A',
 };
 
 export const lobbying = () => readOptional<Lobbying>('lobbying.json');

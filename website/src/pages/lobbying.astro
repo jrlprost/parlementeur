@@ -1,8 +1,8 @@
 ---
 import Base from '../layouts/Base.astro';
 import { fmtDate, fmtInt } from '../lib/data';
-import { lobbying, INST_COLORS, budget } from '../lib/lobbying';
-import { sankey, treemap, quarters } from '../lib/charts';
+import { lobbying, INST_COLORS, FAM_COLORS, budget } from '../lib/lobbying';
+import { sankey, treemap, quarters, orgScatter } from '../lib/charts';
 import { orgName } from '../lib/text';
 
 const l = lobbying()!;
@@ -34,7 +34,18 @@ const MOY_ICON: Record<string, string> = {
 const icon = (n: string) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${MOY_ICON[n] ?? '<circle cx="12" cy="12" r="8"/>'}</svg>`;
 // Registre : par défaut le dernier trimestre bien rempli (le trimestre en cours vient de commencer).
 const defQ = [...l.trimestres].reverse().find((t) => t.n >= 1000)?.t ?? l.registre[0];
-const sections = [['vises', 'Qui est visé'], ['ministeres', 'Ministères'], ['sujets', 'Sujets'], ['acteurs', 'Les plus actifs'], ['methodes', 'Méthodes'], ['elus', 'Élus nommés'], ['registre', 'Registre']];
+// Nuage des organisations les plus actives, et trois portraits.
+const big = l.orgs.filter((o) => o[3] >= 10);
+const famNom = Object.fromEntries(l.familles.map((f) => [f.code, f.nom]));
+const fmtB = (v: number) => (v >= 1e6 ? `${(v / 1e6).toLocaleString('fr-FR')} M€` : v >= 1e4 ? `${Math.round(v / 1000)} k€` : 'moins de 10 k€');
+const scatterSvg = orgScatter(
+  big.map((o) => ({ s: o[0], n: orgName(o[1]), actions: o[3], budget: o[5] ?? 0, color: FAM_COLORS[o[2]] ?? '#999', fam: famNom[o[2]] ?? '', label: `${fmtInt(o[3])} actions · budget ${fmtB(o[5] ?? 0)} par an` })),
+  [...big].sort((a, b) => b[3] * Math.max(b[5], 1e4) - a[3] * Math.max(a[5], 1e4)).slice(0, 10).map((o) => o[0]),
+);
+const topAct = l.top[0];
+const topBud = l.gros[0];
+const topLink = [...l.orgs].sort((a, b) => b[4] - a[4])[0];
+const sections = [['vises', 'Qui est visé'], ['ministeres', 'Ministères'], ['sujets', 'Sujets'], ['acteurs', 'Qui pèse le plus'], ['methodes', 'Méthodes'], ['elus', 'Élus nommés'], ['registre', 'Registre']];
 ---
 <Base title={`${fmtInt(l.actions)} actions de lobbying`} description={`Depuis juillet 2024, ${fmtInt(l.organisations)} organisations ont déclaré ${fmtInt(l.actions)} actions pour influencer le Parlement, le Gouvernement, l'Élysée et les administrations. Qui, sur quoi, comment, et quels élus les ont rencontrées.`} og="/og/lobbying.png" section="lobbying">
   <div class="stack" style="--gap:48px">
@@ -76,25 +87,29 @@ const sections = [['vises', 'Qui est visé'], ['ministeres', 'Ministères'], ['s
     </section>
 
     <section class="stack sec" id="acteurs">
-      <h2>Les plus actifs</h2>
-      <div class="tabs" role="tablist" aria-label="Type d'organisation">
-        <button type="button" role="tab" aria-selected="true" data-tab="all">Toutes</button>
-        {l.familles.filter((f) => f.organisations > 0 && f.code !== 'autres').map((f) => <button type="button" role="tab" aria-selected="false" data-tab={f.code}>{f.nom}</button>)}
+      <h2>Qui pèse le plus</h2>
+      <p class="muted">Chaque point est une organisation ayant déclaré au moins 10 actions : plus elle est à droite, plus elle agit ; plus elle est haut, plus son budget de lobbying est élevé. Touchez un point.</p>
+      <div class="tabs" role="group" aria-label="Mettre en avant un type d'organisation">
+        <button type="button" aria-pressed="true" data-ofam="">Toutes</button>
+        {l.familles.filter((f) => f.organisations > 0 && f.code !== 'autres').map((f) => <button type="button" aria-pressed="false" data-ofam={f.code}><i style={`background:${FAM_COLORS[f.code]}`}></i>{f.nom}</button>)}
       </div>
-      {[['all', l.top.slice(0, 15)] as const, ...Object.entries(l.topFamilles).map(([k, v]) => [k, v] as const)].map(([k, list]) => (
-        <ol class="rank" data-panel={k} hidden={k !== 'all'}>
-          {list.map((o, i) => (
-            <li>
-              <a href={`/lobbying/${o.slug}/`}>
-                <span class="rk num">{i + 1}</span>
-                <span class="nm">{orgName(o.nom)}<span class="small muted">{FAM[o.famille]}{o.depense ? ` · ${budget(o.depense)} par an` : ''}</span></span>
-                <span class="bar" aria-hidden="true"><span style={`width:${(o.actions / list[0].actions) * 100}%`}></span></span>
-                <b class="num">{fmtInt(o.actions)}</b>
-              </a>
-            </li>
+      <figure class="orgfig">
+        <Fragment set:html={scatterSvg} />
+        <div class="pick" aria-live="polite"><p class="muted small">Touchez un point pour voir l'organisation.</p></div>
+      </figure>
+      <div class="podium">
+        <a href={`/lobbying/${topAct.slug}/`}><span class="small muted">Le plus d'actions</span><b>{orgName(topAct.nom)}</b><span class="num">{fmtInt(topAct.actions)} actions</span></a>
+        <a href={`/lobbying/${topBud.slug}/`}><span class="small muted">Le plus gros budget</span><b>{orgName(topBud.nom)}</b><span class="num">{budget(topBud.depense)} par an</span></a>
+        <a href={`/lobbying/${topLink[0]}/`}><span class="small muted">Le plus d'élus rencontrés</span><b>{orgName(topLink[1])}</b><span class="num">{topLink[4]} élus nommés</span></a>
+      </div>
+      <details class="rankall">
+        <summary>Voir le classement complet</summary>
+        <ol class="rank">
+          {l.top.slice(0, 25).map((o, i) => (
+            <li><a href={`/lobbying/${o.slug}/`}><span class="rk num">{i + 1}</span><span class="nm">{orgName(o.nom)}<span class="small muted">{FAM[o.famille]}{o.depense ? ` · ${budget(o.depense)} par an` : ''}</span></span><b class="num">{fmtInt(o.actions)}</b></a></li>
           ))}
         </ol>
-      ))}
+      </details>
       <div class="orgsearch">
         <label for="oq" class="sr-only">Chercher une organisation</label>
         <input id="oq" type="search" placeholder={`Chercher parmi les ${fmtInt(l.organisations)} organisations`} autocomplete="off" />
@@ -104,12 +119,21 @@ const sections = [['vises', 'Qui est visé'], ['ministeres', 'Ministères'], ['s
 
     <section class="stack sec" id="methodes">
       <h2>Comment ils s'y prennent</h2>
+      <p class="muted">Sur 10 actions déclarées, combien utilisent chaque moyen (une action en combine souvent plusieurs).</p>
       <ul class="moy">
-        {l.moyens.map((m) => (
-          <li><span class="ic" set:html={icon(m.nom)}></span><span class="ml">{m.nom}</span><span class="mb" aria-hidden="true"><span style={`width:${(m.n / moyMax) * 100}%`}></span></span><b class="num">{pct(m.n)}</b></li>
-        ))}
+        {l.moyens.slice(0, 8).map((m) => {
+          const on = Math.round((m.n / l.actions) * 10);
+          return (
+            <li>
+              <span class="ic" set:html={icon(m.nom)}></span>
+              <b class="mp num">{pct(m.n)}</b>
+              <span class="ml">{m.nom}</span>
+              <span class="dots" role="img" aria-label={`${on} actions sur 10`}>{Array.from({ length: 10 }, (_, k) => <i class={k < on ? 'on' : ''}></i>)}</span>
+            </li>
+          );
+        })}
       </ul>
-      <p class="small muted">Part des actions qui recourent à chaque moyen (une action en combine souvent plusieurs). Décisions visées : {l.decisions.slice(0, 4).map((d) => `${d.nom.toLowerCase()} ${pct(d.n)}`).join(', ')}.</p>
+      <p class="small muted">Ce qu'elles visent : {l.decisions.slice(0, 4).map((d) => `${d.nom.toLowerCase()} (${pct(d.n)})`).join(', ')}.</p>
     </section>
 
     <section class="stack sec" id="elus">
@@ -202,11 +226,24 @@ const sections = [['vises', 'Qui est visé'], ['ministeres', 'Ministères'], ['s
   document.querySelectorAll<HTMLButtonElement>('[data-f]').forEach((b) => b.addEventListener('click', () => go(b.dataset.f === 'min' ? fm : fd, b.dataset.v!)));
   document.querySelectorAll<SVGGElement>('.tm g').forEach((g) => g.addEventListener('click', () => { const v = g.querySelector('title')?.textContent?.split(' : ')[0]; if (v) go(fm, v); }));
 
-  // Onglets des organisations les plus actives.
-  document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) => b.addEventListener('click', () => {
-    document.querySelectorAll('[data-tab]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
-    document.querySelectorAll<HTMLElement>('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== b.dataset.tab));
+  // Nuage des organisations : un type mis en avant, et le point le plus proche du doigt.
+  const ofig = $<HTMLElement>('.orgfig'), osvg = ofig.querySelector('svg')!, opick = ofig.querySelector<HTMLElement>('.pick')!;
+  const odots = [...osvg.querySelectorAll<SVGCircleElement>('circle[data-s]')];
+  document.querySelectorAll<HTMLButtonElement>('[data-ofam]').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-ofam]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    const f = b.dataset.ofam ? b.textContent!.trim() : '';
+    osvg.classList.toggle('focus', !!f);
+    odots.forEach((c) => c.classList.toggle('hl', !!f && c.dataset.g === f));
   }));
+  let osel: SVGCircleElement | null = null;
+  osvg.addEventListener('click', (e) => {
+    let best: SVGCircleElement | null = null, bd = Infinity;
+    for (const c of odots) { const r = c.getBoundingClientRect(); const d = (r.x + r.width / 2 - e.clientX) ** 2 + (r.y + r.height / 2 - e.clientY) ** 2; if (d < bd) { bd = d; best = c; } }
+    if (!best || bd > 24 * 24) return;
+    osel?.classList.remove('on'); osel = best; best.classList.add('on');
+    const d = best.dataset;
+    opick.innerHTML = `<a href="/lobbying/${d.s}/"><b>${esc(d.n!)}</b><span class="small muted">${esc(d.g!)} · ${esc(d.v!)}</span><span class="small">Voir la fiche →</span></a>`;
+  });
 
   // Recherche d'une organisation (index chargé au premier usage).
   const oq = $<HTMLInputElement>('#oq'), ores = $<HTMLUListElement>('.ores');
@@ -251,32 +288,46 @@ const sections = [['vises', 'Qui est visé'], ['ministeres', 'Ministères'], ['s
   .bubble:hover, .chip:hover { box-shadow: inset 0 0 0 1.5px var(--ink); }
   .tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
   .tabs button { flex: none; border: 1px solid var(--ink-16); background: var(--bg); border-radius: 999px; padding: 10px 14px; min-height: 44px; font-size: 0.88rem; }
-  .tabs [aria-selected='true'] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
   .rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-width: 760px; }
-  .rank a { display: grid; grid-template-columns: 28px minmax(0, 1fr) minmax(60px, 30%) 56px; gap: 10px; align-items: center; padding: 10px 6px; border-radius: 8px; text-decoration: none; min-height: 52px; }
-  .rank.compact a { grid-template-columns: 28px minmax(0, 1fr) auto; }
+  .rank a { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 6px; border-radius: 8px; text-decoration: none; min-height: 52px; }
+  .rank.compact a, .rankall .rank a { grid-template-columns: 28px minmax(0, 1fr) auto; }
   .rank a:hover { background: var(--ink-4); }
   .rk { color: var(--ink-62); font-size: 0.85rem; text-align: right; }
   .nm { display: grid; font-weight: 600; min-width: 0; }
   .nm .small { font-weight: 400; }
-  .bar { height: 10px; background: var(--ink-8); border-radius: 2px; overflow: hidden; }
-  .bar span { display: block; height: 100%; background: var(--ramp-to); }
   .rank b { text-align: right; }
-  @media (max-width: 600px) { .rank a { grid-template-columns: 24px minmax(0, 1fr) 52px; } .rank .bar { display: none; } }
+  @media (max-width: 600px) { .rank a { grid-template-columns: 24px minmax(0, 1fr) 52px; } }
   .orgsearch { position: relative; max-width: 520px; }
   .orgsearch input, .filters input, .filters select { font: inherit; font-size: 16px; padding: 11px 13px; border: 1px solid var(--ink-16); border-radius: 10px; background: var(--bg); color: var(--ink); width: 100%; min-height: 46px; }
   .ores { list-style: none; margin: 6px 0 0; padding: 6px; border: 1px solid var(--ink-16); border-radius: 10px; }
   .ores :global(a) { display: grid; padding: 10px; border-radius: 6px; text-decoration: none; min-height: 44px; }
   .ores :global(a:hover) { background: var(--ink-4); }
   .ores :global(.none), .reg :global(.none) { padding: 10px; color: var(--ink-62); }
-  .moy { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; max-width: 680px; }
-  .moy li { display: grid; grid-template-columns: 36px minmax(0, 1fr) minmax(70px, 34%) 46px; gap: 10px; align-items: center; }
-  .ic { width: 32px; height: 32px; color: var(--ramp-to); }
+  .moy { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); }
+  .moy li { border: 1px solid var(--ink-16); border-radius: 14px; padding: 14px; display: grid; grid-template-columns: 40px 1fr; gap: 4px 12px; align-items: center; }
+  .ic { width: 36px; height: 36px; color: var(--ramp-to); grid-row: span 2; }
   .ic :global(svg) { width: 100%; height: 100%; }
-  .mb { height: 10px; background: var(--ink-8); border-radius: 2px; overflow: hidden; }
-  .mb span { display: block; height: 100%; background: var(--ramp-to); }
-  .moy b { text-align: right; }
-  @media (max-width: 600px) { .moy li { grid-template-columns: 32px minmax(0, 1fr) 44px; } .moy .mb { grid-column: 2 / -1; grid-row: 2; } }
+  .mp { font-family: var(--serif); font-size: 1.8rem; font-weight: 600; line-height: 1; }
+  .ml { font-size: 0.9rem; line-height: 1.25; }
+  .dots { grid-column: 1 / -1; display: flex; gap: 4px; margin-top: 6px; }
+  .dots i { flex: 1; height: 8px; border-radius: 4px; background: var(--ink-8); }
+  .dots i.on { background: var(--ramp-to); }
+  .orgfig { margin: 0; display: grid; gap: 8px; max-width: 680px; }
+  .orgfig :global(svg) { width: 100%; height: auto; display: block; overflow: visible; }
+  .orgfig :global(.grid) { stroke: var(--ink-8); }
+  .orgfig :global(.tk) { font-size: 10.5px; fill: var(--ink-62); font-family: var(--sans); }
+  .orgfig :global(.qt) { font-size: 10.5px; fill: var(--ink-62); font-style: italic; font-family: var(--sans); }
+  .orgfig :global(.an) { font-size: 10.5px; font-weight: 700; fill: var(--ink); font-family: var(--sans); paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+  .orgfig :global(circle) { cursor: pointer; transition: opacity .2s; }
+  .orgfig :global(svg.focus circle:not(.hl)) { opacity: 0.12; }
+  .orgfig :global(circle.on) { stroke: var(--ink); stroke-width: 2; }
+  .orgfig .pick :global(a) { display: grid; gap: 2px; border: 1px solid var(--ink-16); border-radius: 12px; padding: 12px 14px; text-decoration: none; }
+  .tabs button i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  .tabs [aria-pressed='true'] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .podium { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
+  .podium a { display: grid; gap: 2px; border-top: 2px solid var(--ink); padding-top: 8px; text-decoration: none; }
+  .podium b { font-family: var(--serif); font-size: 1.25rem; }
+  .rankall summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
   .h4 { font-family: var(--sans); font-size: 1.05rem; font-weight: 700; }
   .cov summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
   .plain { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
