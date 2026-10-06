@@ -34,6 +34,7 @@ SOURCES = {
     "ecologie": {"label": "Ministères de la Transition écologique, agendas des ministres", "url": ECOLOGIE},
     "diplomatie": {"label": "Ministère de l'Europe et des Affaires étrangères, agendas des ministres", "url": DIPLOMATIE},
     "matignon": {"label": "Premier ministre, agenda publié sur info.gouv.fr", "url": "https://www.info.gouv.fr/agenda/ministre/sebastien-lecornu"},
+    "economie": {"label": "Ministères économiques et financiers (Bercy), agendas des ministres", "url": "https://presse.economie.gouv.fr/agendas/"},
 }
 
 # Rendez-vous où le ministre reçoit ou rencontre quelqu'un (et non un déplacement, un discours, une séance).
@@ -272,14 +273,17 @@ def _navigateur() -> list[dict]:
 def load() -> dict:
     entries: list[dict] = []
     status = {}
-    for key, fn in (("education", _education), ("esr", _esr), ("culture", _culture), ("ecologie", _ecologie), ("diplomatie", _diplomatie), ("matignon", _navigateur)):
+    for key, fn in (("education", _education), ("esr", _esr), ("culture", _culture), ("ecologie", _ecologie), ("diplomatie", _diplomatie), ("navigateur", _navigateur)):
         try:
             rows = fn()
             entries += rows
-            status[key] = {**SOURCES[key], "records": len(rows), "dernier": max((r["date"] for r in rows), default=None)}
+            # Le fichier du navigateur réunit plusieurs sources (Matignon, Bercy…) : une ligne de couverture par source.
+            for k in sorted({r["source"] for r in rows}) if key == "navigateur" else [key]:
+                sub = [r for r in rows if r["source"] == k]
+                status[k] = {**SOURCES.get(k, {"label": k, "url": ""}), "records": len(sub), "dernier": max((r["date"] for r in sub), default=None)}
         except Exception as e:  # une source indisponible n'empêche pas les autres
             log(f"agenda ministériel {key} indisponible : {e}")
-            status[key] = {**SOURCES[key], "records": 0, "erreur": str(e)[:120]}
+            status[key] = {**SOURCES.get(key, {"label": key, "url": ""}), "records": 0, "erreur": str(e)[:120]}
     meetings = [e for e in entries if MEETING.search(e["texte"])]
     log(f"agendas des ministres : {len(entries)} événements depuis {DEPUIS}, dont {len(meetings)} entretiens ou rencontres")
     return {"entries": entries, "meetings": meetings, "sources": status}
