@@ -23,6 +23,7 @@ EDU = "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ag
 ESR = "https://data.enseignementsup-recherche.gouv.fr/api/explore/v2.1/catalog/datasets/fr-esr-agenda-ministre/exports/json"
 CULTURE = "https://www.culture.gouv.fr/presse/agenda-ministre"
 DIPLOMATIE = "https://www.diplomatie.gouv.fr/fr/agenda"
+ECOLOGIE = "https://www.ecologie.gouv.fr/presse"
 # Agendas protégés contre les robots (Matignon…), collectés avec un navigateur par website/scripts/agendas-navigateur.ts.
 NAVIGATEUR = "https://og.parlementeur.fr/donnees/agendas-navigateur.json"
 
@@ -30,6 +31,7 @@ SOURCES = {
     "education": {"label": "Ministère de l'Éducation nationale, agenda du ministre (open data)", "url": "https://www.data.gouv.fr/datasets/agenda-du-ministre-de-leducation-nationale-et-de-la-jeunesse"},
     "esr": {"label": "Ministère de l'Enseignement supérieur et de la Recherche, agenda public (open data)", "url": "https://www.data.gouv.fr/datasets/agenda-public-des-ministres-en-charge-de-lenseignement-superieur-de-la-recherche-et-de-linnovation"},
     "culture": {"label": "Ministère de la Culture, agenda prévisionnel de la ministre", "url": CULTURE},
+    "ecologie": {"label": "Ministères de la Transition écologique, agendas des ministres", "url": ECOLOGIE},
     "diplomatie": {"label": "Ministère de l'Europe et des Affaires étrangères, agendas des ministres", "url": DIPLOMATIE},
     "matignon": {"label": "Premier ministre, agenda publié sur info.gouv.fr", "url": "https://www.info.gouv.fr/agenda/ministre/sebastien-lecornu"},
 }
@@ -134,6 +136,82 @@ def _culture() -> list[dict]:
 JOURS = r"(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)"
 
 
+def _parse_hours(lines: list[str], year: int, base: dict) -> list[dict]:
+    """Agenda au format « Lundi 15 juin » puis « 09h30 : Entretien avec … » (le lieu suit, sur sa ligne)."""
+    out, day = [], None
+    for l in lines:
+        m = re.match(JOURS + r"\s+(\d+)(?:er)?\s+([a-zéû]+)", l, re.I)
+        if m and m.group(3).lower() in MOIS and len(l) < 40:
+            day = date(year, MOIS[m.group(3).lower()], int(m.group(2))).isoformat()
+            continue
+        h = re.match(r"^(\d{1,2})\s*h\s*(\d{2})?\s*[:–-]?\s+(.*)$", l)
+        if h and day:
+            out.append({**base, "date": day, "heure": f"{int(h.group(1)):02d}:{h.group(2) or '00'}", "texte": h.group(3).strip()})
+    return out
+
+
+# Le site de l'Écologie publie aussi les agendas des ministres du Logement et des Territoires.
+ECOLOGIE_MIN = {
+    "Valérie Létard": "Logement",
+    "Vincent Jeanbrun": "Logement",
+    "François Rebsamen": "Aménagement du territoire, ruralité et collectivités territoriales",
+    "Françoise Gatel": "Aménagement du territoire, ruralité et collectivités territoriales",
+    "Catherine Vautrin": "Aménagement du territoire, ruralité et collectivités territoriales",
+    "Michel Fournier": "Aménagement du territoire, ruralité et collectivités territoriales",
+    "Agnès Pannier-Runacher": "Environnement, énergie et mer",
+    "Olga Givernet": "Environnement, énergie et mer",
+}
+
+
+def _ecologie() -> list[dict]:
+    """Agendas hebdomadaires des ministres, listés parmi les communiqués de /presse (paginés)."""
+    # Index cumulatif des semaines déjà vues : la liste ne remonte pas indéfiniment d'un passage à l'autre.
+    index = RAW / "agendas" / "ecologie_index.json"
+    index_existed = index.exists()
+    links: list[str] = json.loads(index.read_text("utf-8")) if index_existed else []
+    known = 0
+    for page in range(0, 400):
+        listing = _get(ECOLOGIE if page == 0 else f"{ECOLOGIE}?page={page}", cache=False)
+        found = list(dict.fromkeys(re.findall(r'href="/presse/(agenda-[^"]+)"', listing)))
+        if "/presse/" not in listing:
+            break
+        new = [u for u in found if u not in links]
+        links += new
+        # Trois pages de suite sans semaine nouvelle : le reste de la liste est déjà dans l'index.
+        known = known + 1 if found and not new else 0
+        oldest = min((int(y) for u in found for y in re.findall(r"(20\d\d)", u)), default=9999)
+        # Sans index (premier passage), on parcourt toute la liste jusqu'à la date de départ.
+        if (index_existed and known >= 3) or oldest < int(DEPUIS[:4]):
+            break
+        time.sleep(0.3)
+    index.write_text(json.dumps(links, ensure_ascii=False), "utf-8")
+    out = []
+    for u in links:
+        url = f"{ECOLOGIE}/{u}"
+        try:
+            lines = _text(_get(url))
+        except httpx.HTTPError:
+            continue
+        title = next((l for l in lines if re.match(r"Agenda (prévisionnel )?d", l)), "")
+        year = next((int(y) for l in lines[:40] for y in re.findall(r"\b(20\d\d)\b", l)), date.today().year)
+        who = re.sub(r"^Agenda (prévisionnel )?(de |d['’])", "", title).strip()
+        who = re.split(r"\s+[-–:]\s*|\s+pour (la semaine|les?)\b|\s+semaine\b|\s+du\s+(\d|lundi|mardi|mercredi|jeudi|vendredi)", who, flags=re.I)[0].strip(" ,:")
+        out += _parse_hours(lines, year, {"source": "ecologie", "ministere": "", "ministre": who or "Ministre", "url": url})
+    # Coquilles du site (« Philipe Tabarot ») : chaque nom rare est rattaché au nom fréquent le plus proche.
+    import difflib
+    freq: dict[str, int] = {}
+    for e in out:
+        freq[e["ministre"]] = freq.get(e["ministre"], 0) + 1
+    common = [n for n, k in sorted(freq.items(), key=lambda x: -x[1]) if k >= 15]
+    for e in out:
+        if e["ministre"] not in common:
+            close = difflib.get_close_matches(e["ministre"], common, n=1, cutoff=0.85)
+            if close:
+                e["ministre"] = close[0]
+        e["ministere"] = ECOLOGIE_MIN.get(e["ministre"], "Environnement, énergie et mer")
+    return [e for e in out if e["date"] >= DEPUIS]
+
+
 def _diplomatie_week(slug: str, week: str, cache: bool) -> list[dict]:
     url = f"{DIPLOMATIE}/{slug}?date={week}"
     try:
@@ -194,7 +272,7 @@ def _navigateur() -> list[dict]:
 def load() -> dict:
     entries: list[dict] = []
     status = {}
-    for key, fn in (("education", _education), ("esr", _esr), ("culture", _culture), ("diplomatie", _diplomatie), ("matignon", _navigateur)):
+    for key, fn in (("education", _education), ("esr", _esr), ("culture", _culture), ("ecologie", _ecologie), ("diplomatie", _diplomatie), ("matignon", _navigateur)):
         try:
             rows = fn()
             entries += rows
