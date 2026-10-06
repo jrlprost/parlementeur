@@ -1,0 +1,229 @@
+---
+import Base from '../../layouts/Base.astro';
+import { load, fmtDate, fmtInt } from '../../lib/data';
+import { lobbying, org, INST_COLORS, budget, type Org } from '../../lib/lobbying';
+import { quarters } from '../../lib/charts';
+import { orgName, plural } from '../../lib/text';
+
+export function getStaticPaths() {
+  return (lobbying()?.orgs ?? []).map(([slug]) => ({ params: { slug } }));
+}
+
+const o = org(Astro.params.slug!) as Org;
+const l = lobbying()!;
+const { deputes, groupes } = load();
+const dep = new Map(deputes.map((d) => [d.slug, d]));
+const gcol = new Map(groupes.map((g) => [g.sigle, g.couleur]));
+const INST = Object.fromEntries(l.institutions.map((i) => [i.code, i.nom]));
+const FAM = Object.fromEntries(l.familles.map((f) => [f.code, f.nom]));
+const nom = orgName(o.nom);
+
+const count = <T,>(xs: T[]) => { const m = new Map<T, number>(); xs.forEach((x) => m.set(x, (m.get(x) ?? 0) + 1)); return [...m.entries()].sort((a, b) => b[1] - a[1]); };
+const inst = count(o.actions.flatMap((a) => a.cibles));
+const instMax = inst[0]?.[1] ?? 1;
+const mins = count(o.actions.flatMap((a) => a.ministeres));
+const auts = count(o.actions.flatMap((a) => a.autorites));
+const doms = count(o.actions.flatMap((a) => a.domaines));
+const moys = count(o.actions.flatMap((a) => a.moyens));
+const q = new Map<string, number>();
+for (const a of o.actions) { const k = `${a.date.slice(0, 4)}-T${Math.floor((Number(a.date.slice(5, 7)) - 1) / 3) + 1}`; q.set(k, (q.get(k) ?? 0) + 1); }
+const series = l.trimestres.filter((t) => t.t >= '2024-T3').map((t) => ({ t: t.t, n: q.get(t.t) ?? 0 }));
+const L = o.liens;
+// Une audition par rapport : les personnes entendues de l'organisation sont regroupées.
+const byReport = new Map<string, { date: string | null; titre: string; url: string; deputes: string[]; qui: string[] }>();
+for (const a of L.auditions) {
+  const r = byReport.get(a.url) ?? { date: a.date, titre: a.titre, url: a.url, deputes: a.deputes, qui: [] };
+  if (a.qui && !r.qui.includes(a.qui)) r.qui.push(a.qui);
+  byReport.set(a.url, r);
+}
+const reports = [...byReport.values()];
+const MIN_LABEL: Record<string, string> = { 'Culture et communication': 'ministre de la Culture', 'Education nationale, enseignement supérieur et recherche': "ministre de l'Éducation ou de l'Enseignement supérieur" };
+const minName = (m: { ministre: string; ministere: string }) => {
+  const n = m.ministre.replace(/^(M\.|Mme|Monsieur|Madame)\s+/, '');
+  return n.toLowerCase().startsWith('ministre') ? n : `${n}, ${MIN_LABEL[m.ministere] ?? 'ministre'}`;
+};
+const rapporteurs = [...new Set(L.auditions.flatMap((a) => a.deputes))].filter((s) => dep.has(s));
+const ministres = [...new Set(L.ministres.map((m) => m.ministre))];
+const nElus = rapporteurs.length + ministres.length;
+const who = (s: string) => dep.get(s);
+const sections = [['vises', 'Qui ils visent'], ['elus', 'Élus rencontrés'], ['actions', 'Actions'], ['identite', 'Identité']];
+const lastQuarter = series.length ? series[series.length - 1].n : 0;
+const desc = `${nom} : ${fmtInt(o.actions.length)} actions de lobbying déclarées depuis juillet 2024${inst.length ? `, surtout auprès du ${INST[inst[0][0]].toLowerCase()}` : ''}${nElus ? `. ${nElus} élus l'ont rencontrée nommément d'après les documents publics` : ''}.`;
+---
+<Base title={`${nom}, lobbying`} description={desc} og="/og/lobbying.png" section="lobbying">
+  <article class="stack" style="--gap:40px">
+    <header class="stack" style="--gap:10px">
+      <p class="kicker"><a href="/lobbying/">Lobbying</a> · {FAM[o.famille]}</p>
+      <h1>{nom}</h1>
+      {(o.nomLong || o.denomination !== o.nom) && <p class="lede">{orgName(o.nomLong ?? o.denomination)}</p>}
+      <p class="muted small">{o.categorie}{o.ville ? ` · ${o.ville}` : ''}{o.secteurs.length ? ` · ${o.secteurs.slice(0, 2).join(', ')}` : ''}</p>
+      <div class="kpis">
+        <div><b class="num">{fmtInt(o.actions.length)}</b><span>{plural(o.actions.length, 'action déclarée', 'actions déclarées')} depuis juillet 2024</span></div>
+        <div><b class="num budget">{budget(o.depense) ?? '–'}</b><span>dépenses annuelles de lobbying déclarées</span></div>
+        <div><b class="num">{o.salaries != null ? fmtInt(Math.round(o.salaries * 10) / 10) : '–'}</b><span>salariés équivalent temps plein affectés</span></div>
+        <div><b class="num">{nElus}</b><span>{plural(nElus, 'élu nommément relié', 'élus nommément reliés')}</span></div>
+      </div>
+    </header>
+
+    <nav class="toc" aria-label="Sections">{sections.map(([id, t]) => <a href={`#${id}`}>{t}</a>)}<a href={o.fiche} class="ext">Fiche HATVP ↗</a></nav>
+
+    <section class="stack sec" id="vises">
+      <h2>Qui ils visent</h2>
+      <ul class="ibars">
+        {inst.map(([c, n]) => <li><span class="il">{INST[c]}</span><span class="ib" aria-hidden="true"><span style={`width:${(n / instMax) * 100}%;background:${INST_COLORS[c]}`}></span></span><b class="num">{fmtInt(n)}</b></li>)}
+      </ul>
+      {mins.length > 0 && <p class="pills">{mins.map(([m, n]) => <span class="pill p-gouv">{m} <b class="num">{n}</b></span>)}</p>}
+      {auts.length > 0 && <p class="pills">{auts.map(([m, n]) => <span class="pill p-aut">{m} <b class="num">{n}</b></span>)}</p>}
+      <div class="two">
+        <div class="stack" style="--gap:8px">
+          <h3 class="h4">Quand</h3>
+          <figure class="qs"><Fragment set:html={quarters(series, 100)} /></figure>
+          <p class="small muted">{lastQuarter ? `${lastQuarter} ${plural(lastQuarter, 'action', 'actions')} ce trimestre.` : 'Aucune action déclarée ce trimestre.'}</p>
+        </div>
+        <div class="stack" style="--gap:8px">
+          <h3 class="h4">Sur quels sujets</h3>
+          <p class="pills">{doms.slice(0, 10).map(([d, n]) => <span class="pill">{d} <b class="num">{n}</b></span>)}</p>
+          <h3 class="h4">Comment</h3>
+          <p class="pills">{moys.slice(0, 6).map(([d, n]) => <span class="pill">{d} <b class="num">{n}</b></span>)}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="stack sec" id="elus">
+      <h2>Les élus qui les ont rencontrés</h2>
+      {nElus === 0 && L.commissions.length === 0 && L.detenteurs.length === 0 && (
+        <p class="muted">Aucun document public consulté par Parlementeur ne nomme, pour l'instant, un élu ayant rencontré cette organisation. Le répertoire de la HATVP, lui, n'indique que les catégories de responsables visés.</p>
+      )}
+      {L.ministres.length > 0 && (
+        <div class="stack" style="--gap:8px">
+          <h3 class="h4">Dans l'agenda d'un ministre</h3>
+          <ul class="tl">
+            {L.ministres.map((m) => <li><span class="d num">{fmtDate(m.date)}</span><span><b>{minName(m)}</b><span>{m.texte}</span></span><a class="small" href={m.url}>source</a></li>)}
+          </ul>
+        </div>
+      )}
+      {L.auditions.length > 0 && (
+        <div class="stack" style="--gap:8px">
+          <h3 class="h4">Auditionnée pour {reports.length} {plural(reports.length, 'rapport', 'rapports')}, par {rapporteurs.length} {plural(rapporteurs.length, 'rapporteur', 'rapporteurs')}</h3>
+          <ul class="tl">
+            {reports.slice(0, 12).map((a) => (
+              <li>
+                <span class="d num">{a.date ? fmtDate(a.date) : ''}</span>
+                <span>
+                  <a href={a.url}>{a.titre.length > 140 ? a.titre.slice(0, 137) + '…' : a.titre}</a>
+                  <span class="deps">{a.deputes.map(who).filter(Boolean).map((d) => <a href={`/deputes/${d!.slug}/`}><i style={`background:${gcol.get(d!.groupe)}`}></i>{d!.prenom} {d!.nom}</a>)}</span>
+                  {a.qui.length > 0 && <span class="small muted">Entendus : {a.qui.join(' ; ')}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {reports.length > 12 && <p class="small muted">Et {reports.length - 12} autres rapports.</p>}
+        </div>
+      )}
+      {L.commissions.length > 0 && (
+        <div class="stack" style="--gap:8px">
+          <h3 class="h4">Entendue en commission, {L.commissions.length} {plural(L.commissions.length, 'fois', 'fois')}</h3>
+          <ul class="tl">
+            {L.commissions.slice(0, 8).map((c) => (
+              <li>
+                <span class="d num">{fmtDate(c.date)}</span>
+                <span>{c.organe}
+                  <details class="pres"><summary>{c.presents.length} députés présents</summary>
+                    <span class="deps">{c.presents.map(who).filter(Boolean).map((d) => <a href={`/deputes/${d!.slug}/`}><i style={`background:${gcol.get(d!.groupe)}`}></i>{d!.prenom} {d!.nom}</a>)}</span>
+                  </details>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {L.detenteurs.length > 0 && (
+        <div class="stack" style="--gap:8px">
+          <h3 class="h4">Des députés en détiennent des parts</h3>
+          <p class="deps">{L.detenteurs.map(who).filter(Boolean).map((d) => <a href={`/deputes/${d!.slug}/#interets`}><i style={`background:${gcol.get(d!.groupe)}`}></i>{d!.prenom} {d!.nom}</a>)}</p>
+          <p class="small muted">D'après leurs déclarations d'intérêts publiées par la HATVP.</p>
+        </div>
+      )}
+    </section>
+
+    <section class="stack sec" id="actions">
+      <h2>{fmtInt(o.actions.length)} {plural(o.actions.length, 'action déclarée', 'actions déclarées')}</h2>
+      <ul class="acts" id="acts">
+        {o.actions.map((a, i) => (
+          <li hidden={i >= 8}>
+            <p class="small muted num">{fmtDate(a.date)}</p>
+            <p>{a.objet}</p>
+            <p class="pills">
+              {a.cibles.flatMap((c) => (c === 'gouvernement' && a.ministeres.length ? a.ministeres.map((m) => <span class="pill p-gouv">{m}</span>) : c === 'autorites' && a.autorites.length ? a.autorites.map((m) => <span class="pill p-aut">{m}</span>) : [<span class="pill" style={`--c:${INST_COLORS[c]}`}>{INST[c]}</span>]))}
+            </p>
+            <p class="small muted">{a.moyens.slice(0, 3).join(' · ')}{a.tiers.length ? ` · pour le compte de ${a.tiers.map(orgName).join(', ')}` : ''}</p>
+          </li>
+        ))}
+      </ul>
+      {o.actions.length > 8 && <button type="button" class="showall" data-target="#acts">Voir les {o.actions.length - 8} autres actions</button>}
+    </section>
+
+    <section class="stack sec" id="identite">
+      <h2>Identité déclarée</h2>
+      {o.exercices.length > 0 && (
+        <ul class="ex">
+          {o.exercices.filter((e) => e.depense || e.activites).map((e) => <li><span class="num">{fmtDate(e.debut)} – {fmtDate(e.fin)}</span><b>{budget(e.depense) ?? 'non déclaré'}</b><span class="small muted">{e.salaries != null ? `${e.salaries} ETP` : ''}</span></li>)}
+        </ul>
+      )}
+      {o.dirigeants.length > 0 && <p><span class="muted">Dirigeants déclarés :</span> {o.dirigeants.map((d) => `${d.nom}${d.fonction ? ` (${d.fonction.toLowerCase()})` : ''}`).join(', ')}.</p>}
+      {o.affiliations.length > 0 && <p><span class="muted">Membre de :</span> {o.affiliations.map((a, i) => <>{i > 0 && ', '}{a.slug ? <a href={`/lobbying/${a.slug}/`}>{orgName(a.nom)}</a> : orgName(a.nom)}</>)}.</p>}
+      {o.clients.length > 0 && <p><span class="muted">Clients déclarés :</span> {o.clients.map(orgName).join(', ')}.</p>}
+      <ul class="plain src">
+        <li><a href={o.fiche}>Fiche de l'organisation au répertoire de la HATVP</a>{o.siren ? ` · SIREN ${o.siren}` : ''}</li>
+        {o.site && <li><a href={o.site} rel="nofollow noopener">Site de l'organisation</a></li>}
+        <li><a href="/lobbying/#elus">D'où viennent les élus nommés</a> · <a href="/methode/">Méthode</a></li>
+      </ul>
+    </section>
+  </article>
+</Base>
+
+<style>
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 14px; margin-top: 8px; }
+  .kpis div { border-top: 2px solid var(--ink); padding-top: 8px; display: grid; align-content: start; }
+  .kpis b { font-family: var(--serif); font-size: 2rem; font-weight: 600; line-height: 1.1; }
+  .kpis b.budget { font-size: 1.6rem; line-height: 1.25; }
+  .kpis span { font-size: 0.85rem; color: var(--ink-62); }
+  .toc { position: sticky; top: 0; z-index: 12; background: var(--bg); display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-block: 8px; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); border-bottom: 1px solid var(--ink-8); }
+  .toc::-webkit-scrollbar { display: none; }
+  .toc a { flex: none; font-size: 0.88rem; text-decoration: none; border: 1px solid var(--ink-16); border-radius: 999px; padding: 9px 14px; white-space: nowrap; }
+  .toc .ext { color: var(--ink-62); }
+  @media (max-width: 760px) { .toc { top: 64px; } }
+  .sec { --gap: 14px; scroll-margin-top: 130px; }
+  .ibars { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; max-width: 640px; }
+  .ibars li { display: grid; grid-template-columns: minmax(110px, 34%) 1fr 48px; gap: 10px; align-items: center; }
+  .ib { height: 14px; background: var(--ink-8); border-radius: 3px; overflow: hidden; }
+  .ib span { display: block; height: 100%; }
+  .ibars b { text-align: right; }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill { font-size: 0.8rem; padding: 4px 10px; border-radius: 999px; border: 1.5px solid var(--c, var(--ink-16)); }
+  .pill b { font-weight: 600; color: var(--ink-62); margin-left: 2px; }
+  .p-gouv { --c: #2A5DB8; }
+  .p-aut { --c: #C9A227; }
+  .two { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+  .qs { margin: 0; }
+  .qs :global(svg) { width: 100%; height: auto; display: block; }
+  .qs :global(.col) { fill: var(--ramp-to); }
+  .qs :global(.tk) { font-size: 11px; fill: var(--ink-62); font-family: var(--sans); }
+  .h4 { font-family: var(--sans); font-size: 1.05rem; font-weight: 700; }
+  .tl { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .tl li { display: grid; grid-template-columns: 116px minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; border-top: 1px solid var(--ink-8); padding-top: 10px; }
+  .tl li > span:nth-child(2) { display: grid; gap: 4px; }
+  .d { color: var(--ink-62); font-size: 0.85rem; }
+  @media (max-width: 600px) { .tl li { grid-template-columns: minmax(0, 1fr) auto; } .tl .d { grid-column: 1 / -1; } }
+  .deps { display: flex; flex-wrap: wrap; gap: 6px; }
+  .deps a { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; text-decoration: none; border: 1px solid var(--ink-16); border-radius: 999px; padding: 6px 11px; min-height: 36px; }
+  .deps a:hover { border-color: var(--ink); }
+  .deps i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .pres summary { cursor: pointer; font-size: 0.88rem; color: var(--ink-62); min-height: 36px; display: flex; align-items: center; }
+  .acts { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .acts li { border: 1px solid var(--ink-16); border-radius: 12px; padding: 14px; display: grid; gap: 6px; }
+  .ex { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-width: 640px; }
+  .ex li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; border-top: 1px solid var(--ink-8); padding-top: 8px; }
+  .ex .small { grid-column: 1 / -1; }
+  .plain { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+</style>

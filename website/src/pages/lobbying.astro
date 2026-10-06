@@ -1,114 +1,300 @@
 ---
 import Base from '../layouts/Base.astro';
-import { readOptional, fmtDate, fmtInt } from '../lib/data';
-import type { Lobbying } from '../lib/lobbying';
-import { treemap } from '../lib/charts';
+import { fmtDate, fmtInt } from '../lib/data';
+import { lobbying, INST_COLORS, budget } from '../lib/lobbying';
+import { sankey, treemap, quarters } from '../lib/charts';
 import { orgName } from '../lib/text';
 
-const l = readOptional<Lobbying>('lobbying.json')!;
-const maxBen = Math.max(...l.beneficiaires.map((d) => d.n));
-const title = `${fmtInt(l.actions)} actions de lobbying auprès des parlementaires`;
-const nice = orgName;
+const l = lobbying()!;
+const FAM = Object.fromEntries(l.familles.map((f) => [f.code, f.nom]));
+const pct = (n: number) => `${Math.round((n / l.actions) * 100)} %`;
+// Libellés courts pour tenir sur un écran de téléphone.
+const SHORT: Record<string, string> = { federations: 'Fédérations', associations: 'Associations', cabinets: 'Cabinets', hauts: 'Hauts fonct.', administration: 'Administrations', autorites: 'Autorités', local: 'Collectivités' };
+const sk = sankey(
+  l.familles.filter((f) => f.actions > 0).map((f) => ({ code: f.code, label: SHORT[f.code] ?? f.nom })),
+  l.institutions.map((i) => ({ code: i.code, label: SHORT[i.code] ?? i.nom, color: INST_COLORS[i.code], n: i.n })),
+  l.flux,
+);
+const mins = l.ministeres.filter((m) => m.n > 0);
+const doms = l.domaines.slice(0, 24);
+const dmax = doms[0]?.n ?? 1;
+const moyMax = l.moyens[0]?.n ?? 1;
+const topLinked = [...l.orgs].filter((o) => o[4] > 0).sort((a, b) => b[4] - a[4] || b[3] - a[3]).slice(0, 12);
+const agendaSrc = Object.values(l.agendas.sources);
+const MOY_ICON: Record<string, string> = {
+  'Informations, expertises': '<path d="M5 4h14v12H9l-4 4z"/>',
+  'Rendez-vous': '<circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M3 20a5 5 0 0 1 10 0M11 20a5 5 0 0 1 10 0"/>',
+  'Propositions de rédaction': '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>',
+  'Courriels, courriers': '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 7l9 6 9-6"/>',
+  'Événements': '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+  'Rendez-vous pour un tiers': '<circle cx="12" cy="8" r="3"/><path d="M6 20a6 6 0 0 1 12 0"/><path d="M18 4l3 3-3 3"/>',
+  'Consultations formelles': '<path d="M4 6h16M4 12h16M4 18h10"/>',
+  'Pétitions, lettres ouvertes': '<path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6"/>',
+};
+const icon = (n: string) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${MOY_ICON[n] ?? '<circle cx="12" cy="12" r="8"/>'}</svg>`;
+// Registre : par défaut le dernier trimestre bien rempli (le trimestre en cours vient de commencer).
+const defQ = [...l.trimestres].reverse().find((t) => t.n >= 1000)?.t ?? l.registre[0];
+const sections = [['vises', 'Qui est visé'], ['ministeres', 'Ministères'], ['sujets', 'Sujets'], ['acteurs', 'Les plus actifs'], ['methodes', 'Méthodes'], ['elus', 'Élus nommés'], ['registre', 'Registre']];
 ---
-<Base title={title} description={`Depuis le ${fmtDate(l.depuis)}, ${fmtInt(l.organisations)} organisations ont déclaré des actions pour influencer députés et sénateurs. Sur quels sujets, pour le compte de qui, avec quels budgets.`} og="/og/lobbying.png" section="lobbying">
+<Base title={`${fmtInt(l.actions)} actions de lobbying`} description={`Depuis juillet 2024, ${fmtInt(l.organisations)} organisations ont déclaré ${fmtInt(l.actions)} actions pour influencer le Parlement, le Gouvernement, l'Élysée et les administrations. Qui, sur quoi, comment, et quels élus les ont rencontrées.`} og="/og/lobbying.png" section="lobbying">
   <div class="stack" style="--gap:48px">
-    <header class="stack" style="--gap:12px">
+    <header class="stack" style="--gap:14px">
       <p class="kicker">Lobbying · répertoire de la HATVP · depuis le {fmtDate(l.depuis)}</p>
-      <h1>{fmtInt(l.actions)} actions pour influencer les parlementaires</h1>
-      <p class="lede">{fmtInt(l.organisations)} entreprises, fédérations, associations et cabinets ont déclaré avoir cherché à convaincre des députés ou des sénateurs depuis le début de la législature. Voici sur quels sujets, et pour le compte de qui.</p>
-      <p class="note"><a href="/rencontres/">Qui a rencontré qui : les rencontres nominatives documentées →</a></p>
-      <p class="note">Le répertoire ne dit pas quel élu a été rencontré : la loi n'oblige les représentants d'intérêts qu'à déclarer la catégorie de responsables visés (« député, sénateur, collaborateur… »).</p>
+      <h1>Qui cherche à influencer les décideurs publics</h1>
+      <div class="kpis">
+        <div><b class="num">{fmtInt(l.actions)}</b><span>actions déclarées</span></div>
+        <div><b class="num">{fmtInt(l.organisations)}</b><span>organisations</span></div>
+        <div><b class="num">{pct(l.actionsParlement)}</b><span>visent le Parlement</span></div>
+        <div><b class="num">{fmtInt(l.liens.organisationsReliees)}</b><span>reliées nommément à des élus</span></div>
+      </div>
+      <figure class="trend"><Fragment set:html={quarters(l.trimestres.filter((t) => t.t >= '2024-T3'), 90)} /><figcaption class="small muted">Actions publiées au répertoire, par trimestre. Les organisations déclarent leurs actions une fois par an, d'où les pics.</figcaption></figure>
     </header>
 
-    <section class="stack" style="--gap:14px">
-      <h2>Les sujets les plus travaillés</h2>
-      <figure class="tmfig" set:html={treemap(l.domaines.slice(0, 16).map((d) => ({ label: d.nom, v: d.n })), 360, 320)}></figure>
-      <p class="src">La surface de chaque case est proportionnelle au nombre d'actions déclarées dans le domaine (une action peut relever de plusieurs domaines).</p>
+    <nav class="toc" aria-label="Sections de la page">{sections.map(([id, t]) => <a href={`#${id}`}>{t}</a>)}</nav>
+
+    <section class="stack sec" id="vises">
+      <h2>Qui est visé</h2>
+      <p class="muted">Chaque organisation déclare les catégories de responsables publics qu'elle a cherché à convaincre. Touchez une institution pour voir ses actions dans le registre.</p>
+      <figure class="sk"><Fragment set:html={sk} /></figure>
     </section>
 
-    <section class="stack" style="--gap:14px">
-      <h2>Pour le compte de qui</h2>
-      <p class="muted">Organisations au nom desquelles le plus d'actions ont été menées, directement ou par un cabinet de lobbying.</p>
-      <ol class="ben" id="ben">
-        {l.beneficiaires.slice(0, 25).map((b, i) => (
-          <li hidden={i >= 10}>
-            <div class="bar"><span class="lbl">{nice(b.nom)}</span><div class="track"><div class="fill" style={`width:${(b.n / maxBen) * 100}%`}></div></div><span class="v num">{fmtInt(b.n)}</span></div>
-            {b.via.length > 0 && <span class="via small muted">aussi via {b.via.map(nice).join(', ')}</span>}
-          </li>
-        ))}
-      </ol>
-      <button type="button" class="showall" data-target="#ben">Voir les 15 suivants</button>
-    </section>
-
-    <section class="stack" style="--gap:14px">
-      <h2>Les plus gros budgets déclarés</h2>
-      <p class="muted">Dépenses annuelles de lobbying déclarées, toutes cibles confondues (Parlement, gouvernement, administrations), par tranche.</p>
-      <div class="scroll">
-        <table class="tbl">
-          <thead><tr><th>Organisation</th><th>Catégorie</th><th class="r">Dépenses déclarées</th><th class="r">Actions vers le Parlement</th></tr></thead>
-          <tbody id="gros">
-            {l.gros.slice(0, 25).map((o, i) => (
-              <tr hidden={i >= 10}><td><a href={o.fiche}>{nice(o.nom)}</a></td><td class="muted small">{o.categorie}</td><td class="r num">{o.depense?.replace('> = ', '≥ ').replace(' euros', ' €').replace(' euros', ' €')}</td><td class="r num">{fmtInt(o.activites)}</td></tr>
-            ))}
-          </tbody>
-        </table>
+    <section class="stack sec" id="ministeres">
+      <h2>Le Gouvernement, ministère par ministère</h2>
+      <p class="muted">Actions visant un ministre ou son cabinet. Touchez un ministère pour filtrer le registre.</p>
+      <figure class="tm"><Fragment set:html={treemap(mins.slice(0, 14).map((m) => ({ label: m.nom, v: m.n })), 360, 280)} /></figure>
+      <div class="chips" role="group" aria-label="Filtrer par ministère">
+        {mins.slice(0, 14).map((m) => <button type="button" class="chip" data-f="min" data-v={m.nom}>{m.nom} <span class="num">{fmtInt(m.n)}</span></button>)}
       </div>
-      <button type="button" class="showall" data-target="#gros">Voir les 15 suivants</button>
+      {l.autorites.length > 0 && <p class="small muted">Autorités indépendantes les plus visées : {l.autorites.slice(0, 6).map((a) => `${a.nom} (${fmtInt(a.n)})`).join(', ')}.</p>}
     </section>
 
-    <section class="stack" style="--gap:14px">
-      <h2>Les dernières actions déclarées</h2>
-      <input id="lq" type="search" placeholder="Filtrer : un sujet, une entreprise, un texte" autocomplete="off" />
-      <ul class="acts" id="acts">
-        {l.recentes.slice(0, 400).map((r, i) => (
-          <li data-q={`${r.organisation} ${r.objet} ${r.domaines.join(' ')}`.toLowerCase()} hidden={i >= 30}>
-            <p class="small muted num">{fmtDate(r.date)} · {nice(r.organisation)}</p>
-            <p>{r.objet}</p>
-            {r.domaines.length > 0 && <p class="small muted">{r.domaines.join(' · ')}</p>}
-          </li>
+    <section class="stack sec" id="sujets">
+      <h2>Sur quels sujets</h2>
+      <div class="bubbles" role="group" aria-label="Filtrer par sujet">
+        {doms.map((d) => <button type="button" class="bubble" data-f="dom" data-v={d.nom} style={`--s:${(0.82 + (d.n / dmax) * 0.75).toFixed(2)}`}>{d.nom} <span class="num">{fmtInt(d.n)}</span></button>)}
+      </div>
+    </section>
+
+    <section class="stack sec" id="acteurs">
+      <h2>Les plus actifs</h2>
+      <div class="tabs" role="tablist" aria-label="Type d'organisation">
+        <button type="button" role="tab" aria-selected="true" data-tab="all">Toutes</button>
+        {l.familles.filter((f) => f.organisations > 0 && f.code !== 'autres').map((f) => <button type="button" role="tab" aria-selected="false" data-tab={f.code}>{f.nom}</button>)}
+      </div>
+      {[['all', l.top.slice(0, 15)] as const, ...Object.entries(l.topFamilles).map(([k, v]) => [k, v] as const)].map(([k, list]) => (
+        <ol class="rank" data-panel={k} hidden={k !== 'all'}>
+          {list.map((o, i) => (
+            <li>
+              <a href={`/lobbying/${o.slug}/`}>
+                <span class="rk num">{i + 1}</span>
+                <span class="nm">{orgName(o.nom)}<span class="small muted">{FAM[o.famille]}{o.depense ? ` · ${budget(o.depense)} par an` : ''}</span></span>
+                <span class="bar" aria-hidden="true"><span style={`width:${(o.actions / list[0].actions) * 100}%`}></span></span>
+                <b class="num">{fmtInt(o.actions)}</b>
+              </a>
+            </li>
+          ))}
+        </ol>
+      ))}
+      <div class="orgsearch">
+        <label for="oq" class="sr-only">Chercher une organisation</label>
+        <input id="oq" type="search" placeholder={`Chercher parmi les ${fmtInt(l.organisations)} organisations`} autocomplete="off" />
+        <ul class="ores" hidden></ul>
+      </div>
+    </section>
+
+    <section class="stack sec" id="methodes">
+      <h2>Comment ils s'y prennent</h2>
+      <ul class="moy">
+        {l.moyens.map((m) => (
+          <li><span class="ic" set:html={icon(m.nom)}></span><span class="ml">{m.nom}</span><span class="mb" aria-hidden="true"><span style={`width:${(m.n / moyMax) * 100}%`}></span></span><b class="num">{pct(m.n)}</b></li>
         ))}
       </ul>
-      <p class="src">Source : <a href={l.source}>HATVP, répertoire des représentants d'intérêts (open data)</a>. Déclarations faites par les organisations elles-mêmes.</p>
+      <p class="small muted">Part des actions qui recourent à chaque moyen (une action en combine souvent plusieurs). Décisions visées : {l.decisions.slice(0, 4).map((d) => `${d.nom.toLowerCase()} ${pct(d.n)}`).join(', ')}.</p>
+    </section>
+
+    <section class="stack sec" id="elus">
+      <h2>Les élus qu'ils ont rencontrés, nommément</h2>
+      <p class="muted">Le répertoire ne nomme jamais les élus rencontrés. D'autres documents publics le font : les annexes des rapports parlementaires, les présences en commission et les agendas des ministres.</p>
+      <div class="kpis">
+        <div><b class="num">{fmtInt(l.liens.auditions)}</b><span>auditions par un rapporteur</span></div>
+        <div><b class="num">{fmtInt(l.liens.commissions)}</b><span>auditions en commission</span></div>
+        <div><b class="num">{fmtInt(l.liens.ministres)}</b><span>rendez-vous dans un agenda ministériel</span></div>
+        <div><b class="num">{fmtInt(l.liens.detenteurs)}</b><span>sociétés dont des députés détiennent des parts</span></div>
+      </div>
+      <h3 class="h4">Les organisations reliées au plus grand nombre d'élus</h3>
+      <ol class="rank compact">
+        {topLinked.map((o, i) => (
+          <li><a href={`/lobbying/${o[0]}/#elus`}><span class="rk num">{i + 1}</span><span class="nm">{orgName(o[1])}<span class="small muted">{fmtInt(o[3])} actions déclarées</span></span><b class="num">{o[4]} élus</b></a></li>
+        ))}
+      </ol>
+      <details class="cov">
+        <summary>Quels agendas ministériels sont couverts ?</summary>
+        <ul class="plain small">
+          {agendaSrc.map((s) => <li><a href={s.url}>{s.label}</a> : {fmtInt(s.records)} événements{s.dernier ? `, jusqu'au ${fmtDate(s.dernier)}` : ''}.</li>)}
+          <li>L'agenda commun de tous les ministres, publié sur info.gouv.fr, est protégé contre la lecture automatique : il n'est pas encore repris ici.</li>
+        </ul>
+      </details>
+    </section>
+
+    <section class="stack sec" id="registre">
+      <h2>Le registre, action par action</h2>
+      <div class="filters">
+        <input id="rq" type="search" placeholder="Organisation, texte, sujet…" autocomplete="off" aria-label="Rechercher dans le registre" />
+        <select id="rinst" aria-label="Institution visée"><option value="">Toutes les institutions</option>{l.institutions.map((i) => <option value={i.code}>{i.nom}</option>)}</select>
+        <select id="rmin" aria-label="Ministère"><option value="">Tous les ministères</option>{mins.map((m) => <option value={m.nom}>{m.nom}</option>)}</select>
+        <select id="rdom" aria-label="Sujet"><option value="">Tous les sujets</option>{l.domaines.map((d) => <option value={d.nom}>{d.nom}</option>)}</select>
+        <select id="rper" aria-label="Période">{l.registre.filter((q) => q >= '2024-T3').map((q) => <option value={q} selected={q === defQ}>{q.replace('-T', ', trimestre ')}</option>)}</select>
+      </div>
+      <p class="rcount small muted" aria-live="polite"></p>
+      <ul class="reg" id="reg"></ul>
+      <button type="button" class="more" hidden>Voir 30 actions de plus</button>
+      <p class="src">Source : <a href={l.source}>HATVP, répertoire des représentants d'intérêts (open data)</a>. Déclarations faites par les organisations elles-mêmes. Les élus nommés viennent des <a href="/rencontres/">rapports parlementaires et commissions</a> et des agendas ministériels.</p>
     </section>
   </div>
 </Base>
 
 <script>
-  const q = document.querySelector<HTMLInputElement>('#lq')!;
-  const items = [...document.querySelectorAll<HTMLLIElement>('#acts li')];
-  q.addEventListener('input', () => {
-    const v = q.value.trim().toLowerCase();
-    let shown = 0;
-    for (const li of items) {
-      const ok = v ? li.dataset.q!.includes(v) : true;
-      li.hidden = !ok || shown >= (v ? 100 : 30);
-      if (!li.hidden) shown++;
-    }
+  import { orgName } from '../lib/text';
+  type Row = [string, string, string, string, string[], string[], string[], string[], string[], number];
+  const INST: Record<string, string> = { parlement: 'Parlement', gouvernement: 'Gouvernement', elysee: 'Élysée', hauts: 'Hauts fonctionnaires', administration: 'Administrations', autorites: 'Autorités', local: 'Collectivités' };
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const cap = orgName;
+  const $ = <T extends Element>(q: string) => document.querySelector<T>(q)!;
+  const list = $<HTMLUListElement>('#reg'), more = $<HTMLButtonElement>('#registre .more'), count = $<HTMLElement>('.rcount');
+  const q = $<HTMLInputElement>('#rq'), fi = $<HTMLSelectElement>('#rinst'), fm = $<HTMLSelectElement>('#rmin'), fd = $<HTMLSelectElement>('#rdom'), fp = $<HTMLSelectElement>('#rper');
+  const cache = new Map<string, Promise<Row[]>>();
+  const load = (p: string) => { if (!cache.has(p)) cache.set(p, fetch(`/lobbying/registre/${p}.json`).then((r) => r.json())); return cache.get(p)!; };
+  let rows: Row[] = [], shown = 30;
+
+  function card(r: Row) {
+    const [date, slug, nom, objet, doms, cib, mins, auts, moy, nommes] = r;
+    const pills = cib.map((c) => c === 'gouvernement' && mins.length ? mins.map((m) => `<span class="pill p-gouvernement">${esc(m)}</span>`).join('') : c === 'autorites' && auts.length ? auts.map((a) => `<span class="pill p-autorites">${esc(a)}</span>`).join('') : `<span class="pill p-${c}">${INST[c]}</span>`).join('');
+    return `<li><p class="rh"><a href="/lobbying/${slug}/">${esc(cap(nom))}</a><span class="small muted num">${date.split('-').reverse().join('/')}</span></p>
+      <p class="ro">${esc(objet)}</p>
+      <p class="pills">${pills}</p>
+      <p class="small muted">${esc(moy.slice(0, 3).join(' · '))}${doms.length ? ` · ${esc(doms.slice(0, 2).join(', '))}` : ''}</p>
+      ${nommes ? `<a class="nm small" href="/lobbying/${slug}/#elus">${nommes} élu${nommes > 1 ? 's' : ''} nommément relié${nommes > 1 ? 's' : ''} à cette organisation →</a>` : ''}</li>`;
+  }
+  async function render(reset = true) {
+    if (reset) shown = 30;
+    rows = await load(fp.value);
+    const words = norm(q.value.trim()).split(/\s+/).filter(Boolean);
+    const hit = rows.filter((r) => (!fi.value || r[5].includes(fi.value)) && (!fm.value || r[6].includes(fm.value)) && (!fd.value || r[4].includes(fd.value)) && (!words.length || words.every((w) => norm(`${r[2]} ${r[3]} ${r[4].join(' ')}`).includes(w))));
+    list.innerHTML = hit.slice(0, shown).map(card).join('') || '<li class="none">Aucune action ne correspond à ces filtres pour cette période.</li>';
+    count.textContent = `${hit.length.toLocaleString('fr-FR')} action${hit.length > 1 ? 's' : ''} sur ${rows.length.toLocaleString('fr-FR')} ce trimestre.`;
+    more.hidden = hit.length <= shown;
+  }
+  [fi, fm, fd, fp].forEach((s) => s.addEventListener('change', () => render()));
+  let t: number | undefined;
+  q.addEventListener('input', () => { clearTimeout(t); t = window.setTimeout(() => render(), 150); });
+  more.addEventListener('click', () => { shown += 30; render(false); });
+  // Le registre se charge quand on s'en approche, pas avant.
+  new IntersectionObserver((e, o) => { if (e.some((x) => x.isIntersecting)) { render(); o.disconnect(); } }, { rootMargin: '600px' }).observe($('#registre'));
+
+  // Graphiques et puces : un toucher filtre le registre et y emmène.
+  const go = (sel: HTMLSelectElement, v: string) => { sel.value = v; render(); $('#registre').scrollIntoView({ behavior: 'smooth' }); };
+  document.querySelectorAll<SVGGElement>('.sk g[data-inst]').forEach((g) => {
+    const f = () => go(fi, g.dataset.inst!);
+    g.addEventListener('click', f);
+    g.addEventListener('keydown', (e) => { if ((e as KeyboardEvent).key === 'Enter') f(); });
+  });
+  document.querySelectorAll<HTMLButtonElement>('[data-f]').forEach((b) => b.addEventListener('click', () => go(b.dataset.f === 'min' ? fm : fd, b.dataset.v!)));
+  document.querySelectorAll<SVGGElement>('.tm g').forEach((g) => g.addEventListener('click', () => { const v = g.querySelector('title')?.textContent?.split(' : ')[0]; if (v) go(fm, v); }));
+
+  // Onglets des organisations les plus actives.
+  document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-tab]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+    document.querySelectorAll<HTMLElement>('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== b.dataset.tab));
+  }));
+
+  // Recherche d'une organisation (index chargé au premier usage).
+  const oq = $<HTMLInputElement>('#oq'), ores = $<HTMLUListElement>('.ores');
+  let idx: [string, string, string, number, number][] | null = null;
+  oq.addEventListener('input', async () => {
+    idx ??= await fetch('/lobbying/index.json').then((r) => r.json());
+    const w = norm(oq.value.trim());
+    if (w.length < 2) { ores.hidden = true; return; }
+    const hits = idx!.filter((o) => norm(o[1]).includes(w)).slice(0, 8);
+    ores.innerHTML = hits.map((o) => `<li><a href="/lobbying/${o[0]}/">${esc(cap(o[1]))}<span class="small muted">${o[3]} actions</span></a></li>`).join('') || '<li class="none">Aucune organisation trouvée.</li>';
+    ores.hidden = false;
   });
 </script>
 
 <style>
-  .tmfig { margin: 0; }
-  .tmfig :global(svg) { width: 100%; height: auto; display: block; max-width: 760px; }
-  .tmfig :global(.tm) { font-size: 10px; font-weight: 700; fill: var(--bg); font-family: var(--sans); }
-  .tmfig :global(.tmv) { font-size: 9.5px; fill: var(--bg); font-family: var(--sans); opacity: 0.85; }
-  .tmfig :global(.dk) { fill: var(--ink); }
-  .note { font-size: 0.92rem; color: var(--ink-62); border-left: 2px solid var(--ink-16); padding-left: 12px; }
-  .bars, .ben { display: grid; gap: 7px; font-size: 0.9rem; }
-  .ben { list-style: none; margin: 0; padding: 0; gap: 10px; }
-  .bar { display: grid; grid-template-columns: minmax(120px, 280px) 1fr 56px; gap: 12px; align-items: center; }
-  .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .track { height: 12px; background: var(--ink-8); border-radius: 2px; overflow: hidden; }
-  .fill { height: 100%; background: var(--ramp-to); }
-  .v { text-align: right; }
-  .via { display: block; padding-left: 0; }
-  @media (max-width: 600px) { .bar { grid-template-columns: 1fr 48px; } .bar .track { grid-column: 1 / -1; grid-row: 2; } }
-  .scroll { overflow-x: auto; }
-  .tbl { width: 100%; border-collapse: collapse; font-size: 0.92rem; min-width: 620px; }
-  .tbl th { text-align: left; font-size: 0.8rem; color: var(--ink-62); border-bottom: 1px solid var(--ink-16); padding: 6px 0; font-weight: 600; }
-  .tbl td { border-bottom: 1px solid var(--ink-8); padding: 8px 0; vertical-align: top; }
-  .tbl .r { text-align: right; padding-left: 12px; white-space: nowrap; }
-  input[type='search'] { font: inherit; padding: 10px 12px; border: 1px solid var(--ink-16); border-radius: 8px; background: var(--bg); color: var(--ink); max-width: 520px; width: 100%; }
-  .acts { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
-  .acts li { display: grid; gap: 2px; border-top: 1px solid var(--ink-8); padding-top: 10px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: 14px; }
+  .kpis div { border-top: 2px solid var(--ink); padding-top: 8px; display: grid; }
+  .kpis b { font-family: var(--serif); font-size: 2rem; font-weight: 600; line-height: 1.1; }
+  .kpis span { font-size: 0.85rem; color: var(--ink-62); }
+  .trend { margin: 0; max-width: 520px; }
+  .trend :global(svg), .sk :global(svg), .tm :global(svg) { width: 100%; height: auto; display: block; }
+  .trend :global(.col) { fill: var(--ramp-to); }
+  .trend :global(.tk) { font-size: 11px; fill: var(--ink-62); font-family: var(--sans); }
+  .toc { position: sticky; top: 0; z-index: 12; background: var(--bg); display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-block: 8px; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); border-bottom: 1px solid var(--ink-8); }
+  .toc::-webkit-scrollbar { display: none; }
+  .toc a { flex: none; font-size: 0.88rem; text-decoration: none; border: 1px solid var(--ink-16); border-radius: 999px; padding: 9px 14px; white-space: nowrap; }
+  @media (max-width: 760px) { .toc { top: 64px; } }
+  .sec { --gap: 14px; scroll-margin-top: 130px; }
+  .sk, .tm { margin: 0; max-width: 680px; }
+  .sk :global(.sl) { font-size: 11px; font-weight: 600; fill: var(--ink); font-family: var(--sans); }
+  .sk :global(.sv) { font-size: 10.5px; fill: var(--ink-62); font-family: var(--sans); }
+  .sk :global(g[data-inst]) { cursor: pointer; }
+  .sk :global(g[data-inst]:hover rect), .sk :global(g[data-inst]:focus rect) { stroke: var(--ink); stroke-width: 1.5; }
+  .tm :global(.tm) { font-size: 11px; font-weight: 700; fill: var(--bg); font-family: var(--sans); }
+  .tm :global(.tmv) { font-size: 10.5px; fill: var(--bg); font-family: var(--sans); opacity: 0.85; }
+  .tm :global(.dk) { fill: var(--ink); }
+  .tm :global(g) { cursor: pointer; }
+  .chips, .bubbles { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { border: 1px solid var(--ink-16); background: var(--bg); border-radius: 999px; padding: 10px 14px; min-height: 44px; font-size: 0.88rem; }
+  .chip span, .bubble span { color: var(--ink-80); }
+  .bubble { border: 0; background: color-mix(in srgb, var(--ramp-to) 12%, var(--bg)); border-radius: 999px; padding: 10px 14px; min-height: 44px; font-size: calc(0.86rem * var(--s)); }
+  .bubble:hover, .chip:hover { box-shadow: inset 0 0 0 1.5px var(--ink); }
+  .tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
+  .tabs button { flex: none; border: 1px solid var(--ink-16); background: var(--bg); border-radius: 999px; padding: 10px 14px; min-height: 44px; font-size: 0.88rem; }
+  .tabs [aria-selected='true'] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-width: 760px; }
+  .rank a { display: grid; grid-template-columns: 28px minmax(0, 1fr) minmax(60px, 30%) 56px; gap: 10px; align-items: center; padding: 10px 6px; border-radius: 8px; text-decoration: none; min-height: 52px; }
+  .rank.compact a { grid-template-columns: 28px minmax(0, 1fr) auto; }
+  .rank a:hover { background: var(--ink-4); }
+  .rk { color: var(--ink-62); font-size: 0.85rem; text-align: right; }
+  .nm { display: grid; font-weight: 600; min-width: 0; }
+  .nm .small { font-weight: 400; }
+  .bar { height: 10px; background: var(--ink-8); border-radius: 2px; overflow: hidden; }
+  .bar span { display: block; height: 100%; background: var(--ramp-to); }
+  .rank b { text-align: right; }
+  @media (max-width: 600px) { .rank a { grid-template-columns: 24px minmax(0, 1fr) 52px; } .rank .bar { display: none; } }
+  .orgsearch { position: relative; max-width: 520px; }
+  .orgsearch input, .filters input, .filters select { font: inherit; font-size: 16px; padding: 11px 13px; border: 1px solid var(--ink-16); border-radius: 10px; background: var(--bg); color: var(--ink); width: 100%; min-height: 46px; }
+  .ores { list-style: none; margin: 6px 0 0; padding: 6px; border: 1px solid var(--ink-16); border-radius: 10px; }
+  .ores :global(a) { display: grid; padding: 10px; border-radius: 6px; text-decoration: none; min-height: 44px; }
+  .ores :global(a:hover) { background: var(--ink-4); }
+  .ores :global(.none), .reg :global(.none) { padding: 10px; color: var(--ink-62); }
+  .moy { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; max-width: 680px; }
+  .moy li { display: grid; grid-template-columns: 36px minmax(0, 1fr) minmax(70px, 34%) 46px; gap: 10px; align-items: center; }
+  .ic { width: 32px; height: 32px; color: var(--ramp-to); }
+  .ic :global(svg) { width: 100%; height: 100%; }
+  .mb { height: 10px; background: var(--ink-8); border-radius: 2px; overflow: hidden; }
+  .mb span { display: block; height: 100%; background: var(--ramp-to); }
+  .moy b { text-align: right; }
+  @media (max-width: 600px) { .moy li { grid-template-columns: 32px minmax(0, 1fr) 44px; } .moy .mb { grid-column: 2 / -1; grid-row: 2; } }
+  .h4 { font-family: var(--sans); font-size: 1.05rem; font-weight: 700; }
+  .cov summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+  .plain { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+  .filters { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
+  .reg { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .reg :global(li) { border: 1px solid var(--ink-16); border-radius: 12px; padding: 14px; display: grid; gap: 6px; }
+  .reg :global(.rh) { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; font-weight: 700; }
+  .reg :global(.rh a) { text-decoration: none; }
+  .reg :global(.ro) { font-size: 0.95rem; }
+  .reg :global(.pills) { display: flex; flex-wrap: wrap; gap: 6px; }
+  .reg :global(.pill) { font-size: 0.76rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; border: 1.5px solid var(--c, var(--ink-16)); }
+  .reg :global(.p-parlement) { --c: var(--ramp-to); }
+  .reg :global(.p-gouvernement) { --c: #2A5DB8; }
+  .reg :global(.p-elysee) { --c: #8F7CC4; }
+  .reg :global(.p-hauts) { --c: #5E7FA8; }
+  .reg :global(.p-administration) { --c: #1B8A8C; }
+  .reg :global(.p-autorites) { --c: #C9A227; }
+  .reg :global(.p-local) { --c: #F08A24; }
+  .reg :global(.nm) { font-weight: 600; }
+  .more { justify-self: start; border: 1px solid var(--ink-16); background: var(--bg); border-radius: 999px; padding: 10px 16px; min-height: 44px; font-weight: 600; }
 </style>

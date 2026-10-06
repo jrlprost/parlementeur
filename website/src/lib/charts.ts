@@ -242,3 +242,58 @@ export function matrix(labels: { sigle: string; color: string }[], rate: number[
   });
   return `<svg viewBox="0 0 ${f1(W)} ${f1(H)}" class="chart matrix" role="img" aria-label="Part des scrutins où deux groupes ont voté de la même façon">${body}</svg>`;
 }
+
+/** Flux (Sankey) : types d'organisations à gauche, institutions visées à droite, épaisseur = nombre d'actions. */
+export function sankey(left: { code: string; label: string }[], right: { code: string; label: string; color: string; n: number }[], flows: { de: string; vers: string; n: number }[]): string {
+  const W = 360, L = 86, R = 104, nodeW = 8, gap = 7, T = 4;
+  const tot = flows.reduce((a, f) => a + f.n, 0) || 1;
+  const inner = 300;
+  const k = (inner - gap * Math.max(left.length, right.length)) / tot;
+  const sum = (code: string, side: 'de' | 'vers') => flows.filter((f) => f[side] === code).reduce((a, f) => a + f.n, 0);
+  const place = (nodes: { code: string }[], side: 'de' | 'vers') => {
+    let y = T;
+    const out = new Map<string, { y: number; h: number; cur: number }>();
+    for (const n of nodes) {
+      const h = Math.max(2, sum(n.code, side) * k);
+      out.set(n.code, { y, h, cur: y });
+      y += h + gap;
+    }
+    return { out, H: y + T };
+  };
+  const lp = place(left, 'de'), rp = place(right, 'vers');
+  const H = Math.max(lp.H, rp.H);
+  const x0 = L + nodeW, x1 = W - R - nodeW, cx = (x0 + x1) / 2;
+  const order = new Map(right.map((r, i) => [r.code, i]));
+  const sorted = [...flows].filter((f) => f.n > 0).sort((a, b) => left.findIndex((l) => l.code === a.de) - left.findIndex((l) => l.code === b.de) || (order.get(a.vers)! - order.get(b.vers)!));
+  const color = new Map(right.map((r) => [r.code, r.color]));
+  let paths = '';
+  for (const f of sorted) {
+    const a = lp.out.get(f.de), b = rp.out.get(f.vers);
+    if (!a || !b) continue;
+    const h = f.n * k;
+    const ya = a.cur + h / 2, yb = b.cur + h / 2;
+    a.cur += h; b.cur += h;
+    paths += `<path d="M${f1(x0)},${f1(ya)} C${f1(cx)},${f1(ya)} ${f1(cx)},${f1(yb)} ${f1(x1)},${f1(yb)}" stroke="${color.get(f.vers)}" stroke-width="${f1(Math.max(0.8, h))}" fill="none" stroke-opacity=".35" class="fl" data-inst="${f.vers}" data-fam="${f.de}"><title>${f.n.toLocaleString('fr-FR')}</title></path>`;
+  }
+  const ln = left.map((n) => { const p = lp.out.get(n.code)!; return `<g class="nd" data-fam="${n.code}"><rect x="${L}" y="${f1(p.y)}" width="${nodeW}" height="${f1(p.h)}" rx="2" fill="var(--ink)"/><text x="${L - 6}" y="${f1(p.y + p.h / 2 + 4)}" text-anchor="end" class="sl">${esc(n.label)}</text></g>`; }).join('');
+  // Libellés de droite sur deux lignes : on les écarte d'au moins 25 px pour qu'ils ne se chevauchent pas.
+  let last = -Infinity;
+  const ly = right.map((n) => { const p = rp.out.get(n.code)!; const y = Math.max(p.y + p.h / 2 - 5, last + 25); last = y; return y; });
+  const rn = right.map((n, i) => { const p = rp.out.get(n.code)!; return `<g class="nd" data-inst="${n.code}" role="button" tabindex="0" aria-label="${esc(n.label)} : ${n.n.toLocaleString('fr-FR')} actions"><rect x="${f1(x1)}" y="${f1(p.y)}" width="${nodeW}" height="${f1(p.h)}" rx="2" fill="${n.color}"/><rect x="${f1(x1)}" y="${f1(ly[i] - 10)}" width="${R + nodeW}" height="26" fill="transparent"/><text x="${f1(x1 + nodeW + 6)}" y="${f1(ly[i] + 1)}" class="sl">${esc(n.label)}</text><text x="${f1(x1 + nodeW + 6)}" y="${f1(ly[i] + 13)}" class="sv">${n.n.toLocaleString('fr-FR')}</text></g>`; }).join('');
+  const H2 = Math.max(H, last + 20);
+  return `<svg viewBox="0 0 ${W} ${f1(H2)}" class="chart sankey" role="group" aria-label="Actions de lobbying par type d'organisation et par institution visée">${paths}${ln}${rn}</svg>`;
+}
+
+/** Colonnes par trimestre. */
+export function quarters(items: { t: string; n: number }[], H = 120): string {
+  const W = 360, B = 18, T = 14, n = items.length || 1, bw = W / n;
+  const max = Math.max(...items.map((i) => i.n), 1);
+  const body = items
+    .map((it, i) => {
+      const h = (it.n / max) * (H - B - T);
+      const lab = it.t.endsWith('T1') || i === 0 ? `<text x="${f1(i * bw + bw / 2)}" y="${H - 4}" text-anchor="middle" class="tk">${it.t.slice(0, 4)}</text>` : '';
+      return `<rect x="${f1(i * bw + 2)}" y="${f1(H - B - h)}" width="${f1(bw - 4)}" height="${f1(h)}" rx="2" class="col"><title>${it.t} : ${it.n.toLocaleString('fr-FR')}</title></rect>${lab}`;
+    })
+    .join('');
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="Actions déclarées par trimestre">${body}</svg>`;
+}
