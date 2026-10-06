@@ -22,11 +22,16 @@ DEPUIS = "2024-07-01"
 EDU = "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-agenda-ministre-education-nationale/exports/json"
 ESR = "https://data.enseignementsup-recherche.gouv.fr/api/explore/v2.1/catalog/datasets/fr-esr-agenda-ministre/exports/json"
 CULTURE = "https://www.culture.gouv.fr/presse/agenda-ministre"
+DIPLOMATIE = "https://www.diplomatie.gouv.fr/fr/agenda"
+# Agendas protégés contre les robots (Matignon…), collectés avec un navigateur par website/scripts/agendas-navigateur.ts.
+NAVIGATEUR = "https://og.parlementeur.fr/donnees/agendas-navigateur.json"
 
 SOURCES = {
     "education": {"label": "Ministère de l'Éducation nationale, agenda du ministre (open data)", "url": "https://www.data.gouv.fr/datasets/agenda-du-ministre-de-leducation-nationale-et-de-la-jeunesse"},
     "esr": {"label": "Ministère de l'Enseignement supérieur et de la Recherche, agenda public (open data)", "url": "https://www.data.gouv.fr/datasets/agenda-public-des-ministres-en-charge-de-lenseignement-superieur-de-la-recherche-et-de-linnovation"},
     "culture": {"label": "Ministère de la Culture, agenda prévisionnel de la ministre", "url": CULTURE},
+    "diplomatie": {"label": "Ministère de l'Europe et des Affaires étrangères, agendas des ministres", "url": DIPLOMATIE},
+    "matignon": {"label": "Premier ministre, agenda publié sur info.gouv.fr", "url": "https://www.info.gouv.fr/agenda/ministre/sebastien-lecornu"},
 }
 
 # Rendez-vous où le ministre reçoit ou rencontre quelqu'un (et non un déplacement, un discours, une séance).
@@ -58,12 +63,12 @@ def _esr() -> list[dict]:
 MOIS = {m: i + 1 for i, m in enumerate(["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"])}
 
 
-def _get(url: str) -> str:
-    """Page HTML mise en cache ; une page de semaine passée ne change plus."""
-    name = "culture_" + re.sub(r"[^a-z0-9]+", "_", url.split("gouv.fr/")[-1].lower())[-80:] + ".html"
+def _get(url: str, cache: bool = True) -> str:
+    """Page HTML mise en cache : une semaine passée ne change plus ; la semaine en cours est relue."""
+    name = re.sub(r"[^a-z0-9]+", "_", url.split("gouv.fr/")[-1].lower())[-90:] + ".html"
     p = RAW / "agendas" / name
     p.parent.mkdir(parents=True, exist_ok=True)
-    if p.exists():
+    if cache and p.exists():
         return p.read_text("utf-8")
     r = httpx.get(url, headers={"User-Agent": USER_AGENT}, timeout=60, follow_redirects=True)
     r.raise_for_status()
@@ -126,10 +131,70 @@ def _culture() -> list[dict]:
     return out
 
 
+JOURS = r"(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)"
+
+
+def _diplomatie_week(slug: str, week: str, cache: bool) -> list[dict]:
+    url = f"{DIPLOMATIE}/{slug}?date={week}"
+    try:
+        lines = _text(_get(url, cache))
+    except httpx.HTTPError:
+        return []
+    who = next((lines[i + 1] for i, l in enumerate(lines) if l.startswith("Vous visualisez l'agenda") and i + 1 < len(lines)), slug.replace("_", " ").title())
+    out, day, pending = [], None, None
+    for l in lines:
+        m = re.match(JOURS + r"\s+(\d+)(?:er)?\s+([a-zéû]+)\s+(20\d\d)$", l, re.I)
+        if m and m.group(3).lower() in MOIS:
+            day = date(int(m.group(4)), MOIS[m.group(3).lower()], int(m.group(2))).isoformat()
+            pending = None
+            continue
+        if l.startswith("Vous visualisez"):
+            break
+        if not day:
+            continue
+        # Le texte précède l'heure : « Entretien avec … » puis « 17:00 ».
+        if re.fullmatch(r"\d{1,2}:\d{2}", l) and pending:
+            out.append({"source": "diplomatie", "ministere": "Affaires étrangères et développement international", "ministre": who, "date": day, "heure": l, "texte": pending, "url": url})
+            pending = None
+        elif not re.fullmatch(r"\d{1,2}:\d{2}", l):
+            pending = l
+    return out
+
+
+def _diplomatie() -> list[dict]:
+    # Les ministres en fonctions sont listés sous « Voir un autre agenda ».
+    slugs = sorted(set(re.findall(r"/fr/agenda/([a-z_]+)", _get(f"{DIPLOMATIE}/jean_noel_barrot", cache=False)))) or ["jean_noel_barrot"]
+    out = []
+    d = date.fromisoformat(DEPUIS)
+    today = date.today()
+    weeks = []
+    while d <= today:
+        y, w, _ = d.isocalendar()
+        weeks.append(f"{y}-W{w:02d}")
+        d = date.fromordinal(d.toordinal() + 7)
+    recent = set(weeks[-2:])
+    for slug in slugs:
+        for wk in weeks:
+            out += _diplomatie_week(slug, wk, cache=wk not in recent)
+    return out
+
+
+def _navigateur() -> list[dict]:
+    """Fichier déposé par le collecteur en navigateur ; la copie locale sert si R2 est injoignable."""
+    try:
+        r = httpx.get(NAVIGATEUR, headers={"User-Agent": USER_AGENT}, timeout=60)
+        r.raise_for_status()
+        data = r.json()
+    except Exception:
+        p = RAW / "agendas-navigateur.json"
+        data = json.loads(p.read_text("utf-8")) if p.exists() else {"entries": []}
+    return [e for e in data.get("entries", []) if e.get("date", "") >= DEPUIS and e.get("texte")]
+
+
 def load() -> dict:
     entries: list[dict] = []
     status = {}
-    for key, fn in (("education", _education), ("esr", _esr), ("culture", _culture)):
+    for key, fn in (("education", _education), ("esr", _esr), ("culture", _culture), ("diplomatie", _diplomatie), ("matignon", _navigateur)):
         try:
             rows = fn()
             entries += rows
