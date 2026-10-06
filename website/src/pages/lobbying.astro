@@ -131,7 +131,7 @@ const sections = [['vises', 'Qui est visé'], ['ministeres', 'Ministères'], ['s
         <summary>Quels agendas ministériels sont couverts ?</summary>
         <ul class="plain small">
           {agendaSrc.map((s) => <li><a href={s.url}>{s.label}</a> : {fmtInt(s.records)} événements{s.dernier ? `, jusqu'au ${fmtDate(s.dernier)}` : ''}.</li>)}
-          <li>L'agenda commun de tous les ministres, publié sur info.gouv.fr, est protégé contre la lecture automatique : il n'est pas encore repris ici.</li>
+          <li>Les autres ministères (Économie, Intérieur, Écologie, Agriculture, Armées, Santé, Travail…) publient leur agenda dans des formats disparates : ils seront ajoutés un par un. Certains sites ne conservent que les semaines récentes.</li>
         </ul>
       </details>
     </section>
