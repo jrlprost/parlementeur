@@ -8,11 +8,11 @@ import shutil
 import duckdb
 import httpx
 
-from . import agenda, an, auditions, circo, comptes_rendus, elections, hatvp, interets, lobbying, proximite, wikidata
+from . import agenda, agendas_ministres, an, auditions, circo, comptes_rendus, elections, hatvp, interets, lobbying, proximite, wikidata
 import time
 from contextlib import contextmanager
 
-from .common import DIST, RAW, ROOT, USER_AGENT, fetch, fetch_info, log, now_iso, read_json, write_json
+from .common import DIST, RAW, ROOT, USER_AGENT, fetch, fetch_info, log, norm_name, now_iso, read_json, write_json
 
 VOTE_FULL = {"p": "pour", "c": "contre", "a": "abstention", "n": "absent"}
 
@@ -155,7 +155,10 @@ def main() -> None:
     with step("Législatives 2024 (ministère de l'Intérieur)"):
         leg = elections.load(deputes)
     with step("Répertoire des représentants d'intérêts (HATVP)"):
-        lobby = lobbying.load()
+        lobby_all = lobbying.load()
+        lobby, lobby_orgs = lobby_all["summary"], lobby_all["orgs"]
+    with step("Agendas publics des ministres"):
+        agendas_min = agendas_ministres.load()
     with step("Rencontres : auditions des rapporteurs et des commissions, amendements identiques"):
         reg = auditions.registry_index(RAW / "hatvp_agora.json")
         rap_rows = auditions.report_auditions()
@@ -166,6 +169,12 @@ def main() -> None:
             a["registre"] = auditions.find_registered(a["texte"], reg)
         auditions.drop_generic(rap_rows + com_auditions)
         amdt_clusters = auditions.identical_amendments()
+        # Rendez-vous des ministres : organisations du répertoire et députés cités par leur nom.
+        dep_keys = [(norm_name(d["prenom"] + d["nom"]), d["id"]) for d in deputes]
+        for m in agendas_min["meetings"]:
+            m["registre"] = auditions.find_registered(m["texte"], reg)
+            t = norm_name(m["texte"])
+            m["deputes"] = [i for k, i in dep_keys if k in t]
     with step("Portraits officiels"):
         download_photos(deputes)
 
@@ -225,6 +234,8 @@ def main() -> None:
             },
             "amendements": [{"texte": c["texte"][:300], "n": len(c["deputes"]), "groupes": len(c["groupes"]), "exemple": c["exemple"]} for c in amd][:30],
             "amendementsTotal": len(amd),
+            # Rendez-vous avec un ministre, d'après les agendas ministériels publiés.
+            "ministres": [{k: m[k] for k in ("date", "ministre", "ministere", "texte", "url")} for m in sorted(agendas_min["meetings"], key=lambda m: m["date"], reverse=True) if pa in m["deputes"]],
         }
 
     out_deputes = []
@@ -342,8 +353,67 @@ def main() -> None:
             },
         )
     write_json(DIST / "scrutins.json", index)
-    write_json(DIST / "lobbying.json", lobby)
     slug_by_id = {d["id"]: d["slug"] for d in deputes}
+    # Fiches des organisations : actions déclarées, et tout ce qui les relie nommément à des élus.
+    # Plusieurs antennes locales partagent le nom légal de leur fédération : on retient la plus active.
+    org_by_name: dict[str, dict] = {}
+    for o in lobby_orgs:
+        if o["denomination"] not in org_by_name or len(o["actions"]) > len(org_by_name[o["denomination"]]["actions"]):
+            org_by_name[o["denomination"]] = o
+    links: dict[str, dict[str, list]] = {o["slug"]: {"auditions": [], "commissions": [], "ministres": [], "detenteurs": []} for o in lobby_orgs}
+    for r in rap_rows:
+        if r.get("type") == "contribution":
+            continue
+        for name in r.get("registre") or []:
+            o = org_by_name.get(name)
+            if o:
+                links[o["slug"]]["auditions"].append({"date": r.get("date"), "titre": r["titre"], "url": r["url"], "deputes": [slug_by_id[x] for x in r["rapporteurs"] if x in slug_by_id], "qui": (r.get("detail") or r.get("organisation") or "")[:160]})
+    for a in com_auditions:
+        for name in a.get("registre") or []:
+            o = org_by_name.get(name)
+            if o:
+                links[o["slug"]]["commissions"].append({"date": a["date"], "organe": a["organe"], "texte": a["texte"][:220], "presents": [slug_by_id[x] for x in a["presents"] if x in slug_by_id]})
+    for m in agendas_min["meetings"]:
+        for name in m.get("registre") or []:
+            o = org_by_name.get(name)
+            if o:
+                links[o["slug"]]["ministres"].append({k: m[k] for k in ("date", "heure", "ministre", "ministere", "texte", "url")})
+    for s_ in interets_all["societes"]:
+        o = org_by_name.get((s_.get("lobby") or {}).get("nom") or "")
+        if o:
+            links[o["slug"]]["detenteurs"] = s_["deputes"]
+    slug_of_org = {k: o["slug"] for k, o in org_by_name.items()}
+    for o in lobby_orgs:
+        L = links[o["slug"]]
+        for k in ("auditions", "commissions", "ministres"):
+            L[k].sort(key=lambda x: x.get("date") or "", reverse=True)
+        o["liens"] = L
+        o["affiliations"] = [{"nom": a, "slug": slug_of_org.get(a)} for a in o["affiliations"]]
+        # Élus nommément reliés : rapporteurs qui l'ont auditionnée, ministres qui l'ont reçue.
+        o["nommes"] = len({d for a in L["auditions"] for d in a["deputes"]}) + len({m["ministre"] for m in L["ministres"]})
+        write_json(DIST / "lobbying" / "orgs" / f"{o['slug']}.json", o)
+    # Registre, action par action, découpé par trimestre (chargé à la demande).
+    by_q: dict[str, list] = {}
+    for o in lobby_orgs:
+        for a in o["actions"]:
+            by_q.setdefault(lobbying.quarter(a["date"]), []).append(
+                [a["date"], o["slug"], o["nom"], a["objet"][:240], a["domaines"], a["cibles"], a["ministeres"], a["autorites"], a["moyens"], o["nommes"]]
+            )
+    for q, rows in by_q.items():
+        rows.sort(key=lambda r: r[0], reverse=True)
+        write_json(DIST / "lobbying" / "registre" / f"{q}.json", rows)
+    lobby["registre"] = sorted(by_q, reverse=True)
+    lobby["orgs"] = [[o["slug"], o["nom"], o["famille"], len(o["actions"]), o["nommes"]] for o in lobby_orgs]
+    lobby["liens"] = {
+        "auditions": sum(len(L["auditions"]) for L in links.values()),
+        "commissions": sum(len(L["commissions"]) for L in links.values()),
+        "ministres": sum(len(L["ministres"]) for L in links.values()),
+        "detenteurs": sum(1 for L in links.values() if L["detenteurs"]),
+        "organisationsReliees": sum(1 for o in lobby_orgs if any(o["liens"][k] for k in ("auditions", "commissions", "ministres", "detenteurs"))),
+    }
+    lobby["agendas"] = {"sources": agendas_min["sources"], "rencontres": len(agendas_min["meetings"]), "avecOrganisation": sum(1 for m in agendas_min["meetings"] if m["registre"]), "avecDepute": sum(1 for m in agendas_min["meetings"] if m["deputes"])}
+    write_json(DIST / "lobbying.json", lobby)
+    write_json(DIST / "lobbying" / "noms.json", slug_of_org)
     grp_sigle = {**ref_to_sigle, **{g["ref"]: g["sigle"] for g in groupes if g["ref"]}}
     write_json(
         DIST / "rencontres.json",
